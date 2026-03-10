@@ -1,13 +1,13 @@
 import type { ReactNode } from "react";
 
-type QueryStateProps = {
+type QueryStateProps = Readonly<{
   children: ReactNode;
   emptyMessage: string;
   hasData: boolean;
   isLoading: boolean;
   loadingMessage: string;
   error?: Error | null;
-};
+}>;
 
 export function QueryState({
   children,
@@ -16,7 +16,7 @@ export function QueryState({
   hasData,
   isLoading,
   loadingMessage,
-}: QueryStateProps) {
+}: Readonly<QueryStateProps>) {
   if (isLoading) {
     return <div className="text-sm text-muted">{loadingMessage}</div>;
   }

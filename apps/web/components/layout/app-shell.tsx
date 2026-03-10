@@ -11,9 +11,9 @@ const navigationItems = ["Portfolio", "Watchlist", "Trading", "Realtime"];
 export function AppShell({ children }: Readonly<AppShellProps>) {
   return (
     <main className="mx-auto min-h-screen w-full max-w-7xl px-5 py-6 sm:px-8 lg:px-12">
-      <div className="surface-panel grid-accent overflow-hidden rounded-[36px] border border-border px-6 py-6 sm:px-8 lg:px-10">
+      <div className="surface-panel grid-accent overflow-hidden rounded-[36px] border border-border px-8 py-8 sm:px-10 lg:px-12">
         <div className="flex flex-col gap-8">
-          <header className="flex flex-col gap-6 border-b border-border/80 pb-6 lg:flex-row lg:items-center lg:justify-between">
+          <header className="flex flex-col gap-6 border-b border-border/80 pb-8 lg:flex-row lg:items-center lg:justify-between">
             <div className="space-y-4">
               <div className="flex items-center gap-3">
                 <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
@@ -29,9 +29,8 @@ export function AppShell({ children }: Readonly<AppShellProps>) {
                 </div>
               </div>
               <p className="max-w-2xl text-balance text-sm leading-7 text-muted sm:text-base">
-                A Next.js application scaffolded for live portfolio tracking,
-                Firebase authentication, typed service access, and
-                SignalR-driven market updates.
+                A live portfolio workspace with secure access, typed service
+                boundaries, and SignalR-driven market updates.
               </p>
             </div>
             <div className="flex flex-col gap-3 sm:items-end">
@@ -47,7 +46,7 @@ export function AppShell({ children }: Readonly<AppShellProps>) {
                 <span className="text-border">/</span>
                 <span>Zustand</span>
                 <span className="text-border">/</span>
-                <span>Firebase</span>
+                <span>Auth</span>
               </div>
             </div>
           </header>
@@ -56,7 +55,7 @@ export function AppShell({ children }: Readonly<AppShellProps>) {
             {navigationItems.map((item) => (
               <div
                 key={item}
-                className="rounded-full border border-border bg-white/60 px-4 py-2 text-sm text-muted"
+                className="rounded-full border border-border bg-surface-muted/70 px-4 py-2 text-sm text-muted"
               >
                 {item}
               </div>

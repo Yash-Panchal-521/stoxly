@@ -1,4 +1,4 @@
-import { firebaseAuth } from "@/lib/firebase";
+import { authService } from "@/services/authService";
 import type { ApiError } from "@/types/api";
 
 const API_BASE_URL =
@@ -11,7 +11,7 @@ async function buildHeaders(headers?: HeadersInit) {
     requestHeaders.set("Content-Type", "application/json");
   }
 
-  const token = await firebaseAuth?.currentUser?.getIdToken();
+  const token = await authService.getIdToken();
 
   if (token) {
     requestHeaders.set("Authorization", `Bearer ${token}`);

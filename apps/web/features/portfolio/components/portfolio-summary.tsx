@@ -117,7 +117,7 @@ export function PortfolioSummary() {
               <span>Price</span>
               <span>Position</span>
             </div>
-            <div className="divide-y divide-border bg-white/70">
+            <div className="divide-y divide-border bg-surface-strong/75">
               {visibleHoldings.map((holding) => (
                 <div
                   key={holding.stockSymbol}
@@ -160,7 +160,7 @@ function SummaryMetric({
   value,
 }: Readonly<SummaryMetricProps>) {
   return (
-    <div className="rounded-[24px] bg-surface-strong p-5 shadow-[0_20px_40px_rgba(15,23,42,0.04)]">
+    <div className="rounded-[24px] border border-border bg-surface-strong p-5 shadow-[0_0_28px_rgba(34,211,238,0.05)]">
       <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-2xl bg-accent text-primary">
         <Icon className="h-4 w-4" />
       </div>

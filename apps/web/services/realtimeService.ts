@@ -42,7 +42,7 @@ class RealtimeService {
       return this.connection;
     }
 
-    if (this.connectionPromise) {
+    if (this.connectionPromise !== undefined) {
       return this.connectionPromise;
     }
 

@@ -9,7 +9,7 @@ export function DashboardHeader() {
   const setActiveView = useDashboardView((state) => state.setActiveView);
 
   return (
-    <div className="flex flex-col gap-4 rounded-[28px] bg-surface-strong px-6 py-5 shadow-[0_20px_50px_rgba(15,23,42,0.06)] sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-4 rounded-[28px] border border-border bg-surface-strong px-6 py-5 shadow-[0_0_32px_rgba(34,211,238,0.06)] sm:flex-row sm:items-center sm:justify-between">
       <div className="space-y-2">
         <p className="text-sm font-medium uppercase tracking-[0.24em] text-muted">
           Workspace state

@@ -60,7 +60,7 @@ export function TradingPanel() {
                 services, then consumed through React Query hooks.
               </p>
             </div>
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-primary">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-border bg-surface-strong text-primary">
               <TrendingUpDown className="h-4 w-4" />
             </div>
           </div>
@@ -105,7 +105,7 @@ export function TradingPanel() {
               {searchResults.map((result) => (
                 <div
                   key={result.symbol}
-                  className="flex items-center justify-between rounded-[24px] border border-border bg-white/70 px-4 py-4"
+                  className="flex items-center justify-between rounded-[24px] border border-border bg-surface-strong/75 px-4 py-4"
                 >
                   <div>
                     <p className="font-semibold text-foreground">

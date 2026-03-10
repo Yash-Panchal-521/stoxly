@@ -55,7 +55,7 @@ export function WatchlistPreview() {
               return (
                 <div
                   key={stock.symbol}
-                  className="rounded-[24px] border border-border bg-white/70 p-5"
+                  className="rounded-[24px] border border-border bg-surface-strong/75 p-5"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div>
