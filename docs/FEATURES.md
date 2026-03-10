@@ -12,14 +12,14 @@ This document lists the major features of the platform.
 
 ## Authentication
 
-Users can create and access accounts securely.
+Authentication is handled through Firebase Authentication.
 
 Capabilities:
 
-- user registration
-- user login
-- JWT authentication
-- secure password storage
+- email/password login
+- Firebase-managed identity
+- Firebase ID token authentication for protected API calls
+- optional social login (future)
 
 ---
 
@@ -173,5 +173,5 @@ Key qualities include:
 - real-time data processing
 - scalable backend architecture
 - fast UI performance
-- secure authentication
+- secure authentication through Firebase
 - maintainable codebase

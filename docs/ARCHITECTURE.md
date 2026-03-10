@@ -12,6 +12,8 @@ The platform allows users to:
 - Receive real-time stock price updates
 - Maintain a watchlist
 
+Authentication is handled through Firebase Authentication. The frontend signs users in with Firebase and the backend verifies Firebase ID tokens without storing passwords.
+
 ---
 
 # System Architecture
@@ -30,6 +32,16 @@ User
 → PostgreSQL Database
 
 Realtime updates flow through SignalR.
+
+Authentication flow:
+
+User
+→ Next.js frontend
+→ Firebase Authentication
+→ ID token issued
+→ token sent to backend API
+→ ASP.NET Core verifies token
+→ backend processes request
 
 ---
 
@@ -74,6 +86,7 @@ Key technologies:
 - shadcn/ui
 - TanStack Query
 - SignalR client
+- Firebase SDK
 
 Data Flow:
 
@@ -83,6 +96,14 @@ Frontend
 → Response returned
 → UI updates via React Query
 
+Authentication Flow:
+
+Frontend
+→ Firebase Authentication sign-in
+→ Firebase ID token returned
+→ token included in Authorization header
+→ backend verifies token before processing protected requests
+
 ---
 
 # Backend Architecture
@@ -91,11 +112,11 @@ Framework: ASP.NET Core (.NET 8)
 
 Backend responsibilities:
 
-- authentication
 - portfolio management
 - trade simulation
 - stock data storage
 - real-time updates
+- Firebase JWT verification for protected API requests
 
 Backend structure:
 
@@ -121,6 +142,13 @@ Handle database operations.
 
 Hubs
 Provide SignalR realtime communication.
+
+Authentication rules:
+
+- the backend does not store passwords
+- the backend does not manage login or registration flows
+- ASP.NET Core only verifies Firebase JWT tokens from the Authorization header
+- verified Firebase claims, especially `uid` and `email`, identify the user in the Stoxly database
 
 ---
 
@@ -179,6 +207,8 @@ Portfolio → Holdings
 Holding → Stock
 
 Transactions record buy and sell events.
+
+Users are linked to Firebase identities through `firebase_uid` instead of application-managed password credentials.
 
 ---
 

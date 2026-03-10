@@ -36,20 +36,20 @@ Price History
 
 ## users
 
-Stores user account information.
+Stores user identity information linked to Firebase Authentication.
 
 Fields:
 
 id (uuid, primary key)
-email (varchar, unique)
-username (varchar)
-password_hash (varchar)
+firebase_uid (varchar, unique)
+email (varchar)
 created_at (timestamp)
 
 Notes:
 
-- authentication handled at API level
-- email must be unique
+- `firebase_uid` is the unique identifier issued by Firebase Authentication
+- the backend never stores passwords or password hashes
+- the database links application data to Firebase identities through `firebase_uid`
 
 ---
 
@@ -183,6 +183,8 @@ Stock
 
 User
 → Watchlist
+
+User records are resolved from verified Firebase claims. The backend uses the Firebase `uid` claim to map requests to the local `users` table.
 
 ---
 

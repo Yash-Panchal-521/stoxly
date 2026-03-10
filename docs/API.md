@@ -4,7 +4,6 @@
 
 The Stoxly backend exposes a REST API used by the frontend to manage:
 
-- authentication
 - portfolios
 - trades
 - watchlists
@@ -22,53 +21,22 @@ http://localhost:5000/api
 
 # Authentication
 
-Authentication uses **JWT tokens**.
+Authentication is handled by **Firebase Authentication**.
 
-## Login
+The Next.js frontend signs users in with Firebase and receives a Firebase ID token. That token must be sent with every protected API request.
 
-POST `/api/auth/login`
-
-Request
+Example header:
 
 ```
-{
-  "email": "user@example.com",
-  "password": "password"
-}
+Authorization: Bearer <firebase-id-token>
 ```
 
-Response
+API rules:
 
-```
-{
-  "token": "jwt-token",
-  "expiresAt": "timestamp"
-}
-```
-
----
-
-## Register
-
-POST `/api/auth/register`
-
-Request
-
-```
-{
-  "email": "user@example.com",
-  "username": "yash",
-  "password": "password"
-}
-```
-
-Response
-
-```
-{
-  "userId": "uuid"
-}
-```
+- the backend does not expose login or registration endpoints
+- the backend never manages passwords
+- ASP.NET Core only verifies Firebase JWT tokens
+- protected endpoints use verified Firebase claims, especially `uid` and `email`, to resolve the Stoxly user record
 
 ---
 
@@ -79,6 +47,8 @@ Response
 GET `/api/portfolios`
 
 Returns all portfolios owned by the authenticated user.
+
+Requires a valid Firebase ID token in the Authorization header.
 
 Response
 
@@ -97,6 +67,8 @@ Response
 ## Create Portfolio
 
 POST `/api/portfolios`
+
+Requires a valid Firebase ID token in the Authorization header.
 
 Request
 
@@ -121,6 +93,8 @@ Response
 
 GET `/api/portfolios/{portfolioId}`
 
+Requires a valid Firebase ID token in the Authorization header.
+
 Response
 
 ```
@@ -138,6 +112,8 @@ Response
 ## Get Holdings
 
 GET `/api/portfolios/{portfolioId}/holdings`
+
+Requires a valid Firebase ID token in the Authorization header.
 
 Response
 
@@ -159,6 +135,8 @@ Response
 
 POST `/api/trades/buy`
 
+Requires a valid Firebase ID token in the Authorization header.
+
 Request
 
 ```
@@ -176,6 +154,8 @@ Request
 
 POST `/api/trades/sell`
 
+Requires a valid Firebase ID token in the Authorization header.
+
 Request
 
 ```
@@ -192,6 +172,8 @@ Request
 ## Transaction History
 
 GET `/api/portfolios/{portfolioId}/transactions`
+
+Requires a valid Firebase ID token in the Authorization header.
 
 Response
 
@@ -215,6 +197,8 @@ Response
 
 GET `/api/watchlist`
 
+Requires a valid Firebase ID token in the Authorization header.
+
 Response
 
 ```
@@ -232,6 +216,8 @@ Response
 
 POST `/api/watchlist`
 
+Requires a valid Firebase ID token in the Authorization header.
+
 Request
 
 ```
@@ -246,6 +232,8 @@ Request
 
 DELETE `/api/watchlist/{symbol}`
 
+Requires a valid Firebase ID token in the Authorization header.
+
 ---
 
 # Stocks API
@@ -253,6 +241,8 @@ DELETE `/api/watchlist/{symbol}`
 ## Search Stocks
 
 GET `/api/stocks/search?q=AAPL`
+
+Requires a valid Firebase ID token in the Authorization header.
 
 Response
 

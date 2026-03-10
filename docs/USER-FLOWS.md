@@ -17,18 +17,16 @@ Steps:
 
 1. User opens the Stoxly application.
 2. User clicks **Sign Up**.
-3. User enters:
-   - email
-   - username
-   - password
-
-4. Frontend sends request to `/api/auth/register`.
-5. Backend creates the user account.
-6. User receives confirmation and is redirected to login.
+3. User enters email and password in the Next.js frontend.
+4. Frontend submits the registration flow to Firebase Authentication.
+5. Firebase creates the identity and returns an ID token.
+6. Frontend sends the Firebase token to protected backend APIs as needed.
+7. Backend verifies the token, extracts `uid` and `email`, and links the request to a Stoxly user record.
+8. User is redirected into the application.
 
 Result:
 
-User account is successfully created.
+User account is created in Firebase and identified in Stoxly through `firebase_uid`.
 
 ---
 
@@ -40,15 +38,16 @@ Steps:
 
 1. User opens login page.
 2. User enters email and password.
-3. Frontend sends request to `/api/auth/login`.
-4. Backend validates credentials.
-5. Backend returns a JWT token.
-6. Frontend stores token securely.
-7. User is redirected to the dashboard.
+3. Frontend authenticates the user with Firebase Authentication.
+4. Firebase returns an ID token to the frontend.
+5. Frontend stores the token securely and includes it in the Authorization header for API requests.
+6. Backend verifies the Firebase token.
+7. Backend extracts `uid` and `email` from the verified token.
+8. User is redirected to the dashboard.
 
 Result:
 
-User is authenticated and can access protected features.
+User is authenticated through Firebase and can access protected features.
 
 ---
 
@@ -61,9 +60,10 @@ Steps:
 1. User opens dashboard.
 2. User clicks **Create Portfolio**.
 3. User enters portfolio name.
-4. Frontend sends request to `/api/portfolios`.
-5. Backend creates a new portfolio record.
-6. Frontend refreshes portfolio list.
+4. Frontend sends request to `/api/portfolios` with `Authorization: Bearer <firebase-id-token>`.
+5. Backend verifies the Firebase token and resolves the user via `firebase_uid`.
+6. Backend creates a new portfolio record.
+7. Frontend refreshes portfolio list.
 
 Result:
 
@@ -101,12 +101,13 @@ Steps:
    - quantity
    - price
 
-4. Frontend sends request to `/api/trades/buy`.
-5. Backend validates trade.
-6. Backend updates holdings.
-7. Backend records transaction.
-8. Portfolio value is recalculated.
-9. SignalR broadcasts portfolio update.
+4. Frontend sends request to `/api/trades/buy` with `Authorization: Bearer <firebase-id-token>`.
+5. Backend verifies the Firebase token and resolves the user via `firebase_uid`.
+6. Backend validates trade.
+7. Backend updates holdings.
+8. Backend records transaction.
+9. Portfolio value is recalculated.
+10. SignalR broadcasts portfolio update.
 
 Result:
 
@@ -123,11 +124,12 @@ Steps:
 1. User selects a stock from holdings.
 2. User clicks **Sell**.
 3. User enters quantity and price.
-4. Frontend sends request to `/api/trades/sell`.
-5. Backend updates holdings.
-6. Backend records transaction.
-7. Portfolio value is recalculated.
-8. SignalR broadcasts update.
+4. Frontend sends request to `/api/trades/sell` with `Authorization: Bearer <firebase-id-token>`.
+5. Backend verifies the Firebase token and resolves the user via `firebase_uid`.
+6. Backend updates holdings.
+7. Backend records transaction.
+8. Portfolio value is recalculated.
+9. SignalR broadcasts update.
 
 Result:
 
@@ -143,10 +145,11 @@ Steps:
 
 1. User searches for a stock.
 2. User clicks **Add to Watchlist**.
-3. Frontend sends request to `/api/watchlist`.
-4. Backend saves watchlist entry.
-5. Stock appears in watchlist view.
-6. Price updates are received via SignalR.
+3. Frontend sends request to `/api/watchlist` with `Authorization: Bearer <firebase-id-token>`.
+4. Backend verifies the Firebase token and resolves the user via `firebase_uid`.
+5. Backend saves watchlist entry.
+6. Stock appears in watchlist view.
+7. Price updates are received via SignalR.
 
 Result:
 
@@ -187,3 +190,14 @@ Steps:
 Result:
 
 Portfolio value reflects latest market prices.
+
+---
+
+# Authentication Summary
+
+Architecture rules:
+
+- Firebase manages authentication and identity
+- the backend must never handle passwords
+- the backend only verifies Firebase ID tokens
+- the database links users through `firebase_uid`
