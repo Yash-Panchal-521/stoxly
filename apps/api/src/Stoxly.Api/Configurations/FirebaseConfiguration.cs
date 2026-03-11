@@ -1,5 +1,6 @@
 using FirebaseAdmin;
 using Google.Apis.Auth.OAuth2;
+using Microsoft.Extensions.Logging;
 
 namespace Stoxly.Api.Configurations;
 
@@ -11,22 +12,32 @@ public static class FirebaseConfiguration
 
         var credentialPath = configuration["Firebase:CredentialPath"];
 
-        if (!string.IsNullOrEmpty(credentialPath))
+        try
         {
-            FirebaseApp.Create(new AppOptions
+            if (!string.IsNullOrEmpty(credentialPath))
             {
-                Credential = GoogleCredential.FromFile(credentialPath),
-                ProjectId = configuration["Firebase:ProjectId"],
-            });
+                FirebaseApp.Create(new AppOptions
+                {
+                    Credential = GoogleCredential.FromFile(credentialPath),
+                    ProjectId = configuration["Firebase:ProjectId"],
+                });
+            }
+            else
+            {
+                // Falls back to GOOGLE_APPLICATION_CREDENTIALS environment variable
+                FirebaseApp.Create(new AppOptions
+                {
+                    Credential = GoogleCredential.GetApplicationDefault(),
+                    ProjectId = configuration["Firebase:ProjectId"],
+                });
+            }
         }
-        else
+        catch (Exception ex)
         {
-            // Falls back to GOOGLE_APPLICATION_CREDENTIALS environment variable
-            FirebaseApp.Create(new AppOptions
-            {
-                Credential = GoogleCredential.GetApplicationDefault(),
-                ProjectId = configuration["Firebase:ProjectId"],
-            });
+            // Log and continue — Firebase auth middleware will reject requests if not initialized
+            var sp = services.BuildServiceProvider();
+            var logger = sp.GetRequiredService<ILoggerFactory>().CreateLogger("FirebaseConfiguration");
+            logger.LogWarning(ex, "Firebase credentials not found. Auth will be unavailable until credentials are configured.");
         }
     }
 }

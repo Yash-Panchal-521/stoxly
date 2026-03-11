@@ -33,6 +33,18 @@ public class UserService : IUserService
         };
 
         _db.Users.Add(user);
+
+        var defaultPortfolio = new Portfolio
+        {
+            UserId = firebaseUid,
+            Name = "My Portfolio",
+            Description = "Default portfolio",
+            BaseCurrency = "USD",
+            IsDefault = true,
+            CreatedAt = DateTime.UtcNow,
+        };
+
+        _db.Portfolios.Add(defaultPortfolio);
         await _db.SaveChangesAsync();
 
         return user;

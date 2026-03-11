@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Stoxly.Api.Data;
@@ -11,9 +12,11 @@ using Stoxly.Api.Data;
 namespace Stoxly.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260311105956_AddPortfolioTable")]
+    partial class AddPortfolioTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -78,75 +81,6 @@ namespace Stoxly.Api.Migrations
                     b.ToTable("portfolios");
                 });
 
-            modelBuilder.Entity("Stoxly.Api.Models.Transaction", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("deleted_at");
-
-                    b.Property<decimal>("Fee")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("numeric(18,4)")
-                        .HasColumnName("fee");
-
-                    b.Property<string>("Notes")
-                        .HasColumnType("text")
-                        .HasColumnName("notes");
-
-                    b.Property<Guid>("PortfolioId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("portfolio_id");
-
-                    b.Property<decimal>("Price")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("numeric(18,4)")
-                        .HasColumnName("price");
-
-                    b.Property<decimal>("Quantity")
-                        .HasPrecision(18, 8)
-                        .HasColumnType("numeric(18,8)")
-                        .HasColumnName("quantity");
-
-                    b.Property<string>("Symbol")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("symbol");
-
-                    b.Property<DateTime>("TradeDate")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("trade_date");
-
-                    b.Property<string>("Type")
-                        .IsRequired()
-                        .HasMaxLength(4)
-                        .HasColumnType("character varying(4)")
-                        .HasColumnName("type");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PortfolioId");
-
-                    b.HasIndex("Symbol");
-
-                    b.HasIndex("TradeDate");
-
-                    b.ToTable("transactions");
-                });
-
             modelBuilder.Entity("Stoxly.Api.Models.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -197,17 +131,6 @@ namespace Stoxly.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("Stoxly.Api.Models.Transaction", b =>
-                {
-                    b.HasOne("Stoxly.Api.Models.Portfolio", "Portfolio")
-                        .WithMany()
-                        .HasForeignKey("PortfolioId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Portfolio");
                 });
 #pragma warning restore 612, 618
         }

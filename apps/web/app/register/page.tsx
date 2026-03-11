@@ -17,6 +17,26 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 
+interface PasswordStrength {
+  score: number;
+  label: string;
+  color: string;
+}
+
+function getPasswordStrength(password: string): PasswordStrength {
+  let score = 0;
+  if (password.length >= 8) score++;
+  if (password.length >= 12) score++;
+  if (/[A-Z]/.test(password)) score++;
+  if (/[0-9]/.test(password)) score++;
+  if (/[^A-Za-z0-9]/.test(password)) score++;
+
+  if (score <= 1) return { score, label: "Weak", color: "bg-danger" };
+  if (score <= 2) return { score, label: "Fair", color: "bg-warning" };
+  if (score <= 3) return { score, label: "Good", color: "bg-primary" };
+  return { score, label: "Strong", color: "bg-success" };
+}
+
 export default function RegisterPage() {
   const { registerWithEmail, loginWithGoogle } = useAuth();
   const router = useRouter();
@@ -26,7 +46,7 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-
+  const strength = getPasswordStrength(password);
   const isPasswordValid = password.length >= 8;
 
   async function handleRegister(e: React.FormEvent) {
@@ -118,6 +138,25 @@ export default function RegisterPage() {
                   )}
                 </button>
               </div>
+              {/* Strength indicator */}
+              {password.length > 0 && (
+                <div className="space-y-1">
+                  <div className="flex gap-1">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <div
+                        key={i}
+                        className={`h-1 flex-1 rounded-full transition-colors ${
+                          i < strength.score ? strength.color : "bg-border"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <p className="text-small text-text-secondary">
+                    {strength.label}
+                    {password.length < 8 && " — minimum 8 characters"}
+                  </p>
+                </div>
+              )}
             </div>
 
             {error && <p className="text-small text-danger">{error}</p>}

@@ -1,0 +1,76 @@
+using System.ComponentModel.DataAnnotations;
+using Stoxly.Api.Models;
+
+namespace Stoxly.Api.DTOs;
+
+public class CreateTransactionRequest
+{
+    [Required]
+    [MaxLength(20)]
+    public string Symbol { get; set; } = string.Empty;
+
+    [Required]
+    public TransactionType Type { get; set; }
+
+    [Required]
+    [Range(0.00000001, double.MaxValue, ErrorMessage = "Quantity must be greater than zero.")]
+    public decimal Quantity { get; set; }
+
+    [Required]
+    [Range(0, double.MaxValue, ErrorMessage = "Price cannot be negative.")]
+    public decimal Price { get; set; }
+
+    [Range(0, double.MaxValue, ErrorMessage = "Fee cannot be negative.")]
+    public decimal Fee { get; set; }
+
+    [Required]
+    public DateTime TradeDate { get; set; }
+
+    [MaxLength(500)]
+    public string? Notes { get; set; }
+}
+
+public class UpdateTransactionRequest
+{
+    [Required]
+    public Guid PortfolioId { get; set; }
+
+    [Required]
+    [MaxLength(20)]
+    public string Symbol { get; set; } = string.Empty;
+
+    [Required]
+    public TransactionType Type { get; set; }
+
+    [Required]
+    [Range(0.00000001, double.MaxValue, ErrorMessage = "Quantity must be greater than zero.")]
+    public decimal Quantity { get; set; }
+
+    [Required]
+    [Range(0, double.MaxValue, ErrorMessage = "Price cannot be negative.")]
+    public decimal Price { get; set; }
+
+    [Range(0, double.MaxValue, ErrorMessage = "Fee cannot be negative.")]
+    public decimal Fee { get; set; }
+
+    [Required]
+    public DateTime TradeDate { get; set; }
+
+    [MaxLength(500)]
+    public string? Notes { get; set; }
+}
+
+public class TransactionResponse
+{
+    public Guid Id { get; set; }
+    public Guid PortfolioId { get; set; }
+    public string Symbol { get; set; } = string.Empty;
+    public string Type { get; set; } = string.Empty;
+    public decimal Quantity { get; set; }
+    public decimal Price { get; set; }
+    public decimal Fee { get; set; }
+    public decimal Total { get; set; }
+    public DateTime TradeDate { get; set; }
+    public string? Notes { get; set; }
+    public DateTime CreatedAt { get; set; }
+}

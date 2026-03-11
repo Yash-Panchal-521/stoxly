@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Stoxly.Api.Configurations;
 using Stoxly.Api.Data;
 using Stoxly.Api.Middleware;
+using Stoxly.Api.Repositories;
 using Stoxly.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -13,8 +14,14 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IPortfolioRepository, PortfolioRepository>();
+builder.Services.AddScoped<IPortfolioService, PortfolioService>();
+builder.Services.AddScoped<ITransactionRepository, TransactionRepository>();
+builder.Services.AddScoped<ITransactionService, TransactionService>();
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(opts =>
+        opts.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -41,6 +48,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors();
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.UseMiddleware<FirebaseAuthMiddleware>();
 app.UseAuthorization();
 app.MapControllers();
