@@ -166,69 +166,85 @@ Avoid:
 
 These rules apply to all UI work in `apps/web`. Follow them whenever writing or reviewing component styles.
 
+Reference: `docs/design-system.md`
+
 ## Color Tokens (defined in `globals.css`)
 
-| Token              | Value                   | Use                                    |
-| ------------------ | ----------------------- | -------------------------------------- |
-| `--foreground`     | `#ebfcff`               | Primary body text, headings, labels    |
-| `--muted`          | `#a0b8c6`               | Secondary text, descriptions, captions |
-| `--primary`        | `#22d3ee`               | Cyan accent, links, active states      |
-| `--background`     | `#020508`               | Page background                        |
-| `--surface`        | `rgba(5,14,19,0.84)`    | Panel backgrounds                      |
-| `--surface-strong` | `rgba(8,20,27,0.96)`    | Card interiors, table rows             |
-| `--border`         | `rgba(34,211,238,0.18)` | Card and input borders                 |
-| `--success`        | `#34d399`               | Positive values, gains                 |
-| `--danger`         | `#fb7185`               | Errors, losses                         |
+| Token                 | Variable           | Hex       | Use                          |
+| --------------------- | ------------------ | --------- | ---------------------------- |
+| `bg-background`       | `--background`     | `#0F1117` | Page background              |
+| `bg-surface`          | `--surface`        | `#171A21` | Sidebar, elevated panels     |
+| `bg-card`             | `--card`           | `#1E222D` | Cards, dialogs               |
+| `bg-primary`          | `--primary`        | `#4F7FFF` | Primary accent, CTA          |
+| `bg-primary-hover`    | `--primary-hover`  | `#3A6AEE` | Hover state                  |
+| `text-success`        | `--success`        | `#22C55E` | Positive values, gains       |
+| `text-danger`         | `--danger`         | `#EF4444` | Errors, losses, sells        |
+| `text-warning`        | `--warning`        | `#F59E0B` | Warnings                     |
+| `text-text-primary`   | `--text-primary`   | `#E6E8EE` | Primary body text, headings  |
+| `text-text-secondary` | `--text-secondary` | `#9CA3AF` | Secondary text, descriptions |
+| `text-muted`          | `--muted`          | `#6B7280` | Muted text, meta info        |
+| `border-border`       | `--border`         | `#2A2F3A` | Card and input borders       |
+| `border-border-hover` | `--border-hover`   | `#3A4050` | Hover borders                |
 
 **Rules:**
 
-- Never use raw hex or rgb values in component classes — always use token-based Tailwind classes (`text-foreground`, `text-muted`, `bg-surface`, etc.)
-- `text-muted` must only be used for secondary/supporting text, never for primary content
-- Never use `text-xs` with `text-muted` on critical UI text; use `text-sm` minimum for readable labels
-- `text-foreground` must be used for all primary labels, headings, and values
+- Never use raw hex or rgb values — always use token-based Tailwind classes
+- `text-text-primary` for all primary labels, headings, and values
+- `text-text-secondary` for secondary/supporting text
+- `text-muted` for meta info only, never for primary content
 
-## Text Contrast Requirements
+## Typography
 
-- All body text must satisfy WCAG AA contrast (≥ 4.5:1 for text < 18px)
-- `--muted` (`#a0b8c6`) on `--background` (`#020508`) passes AA at ~8.5:1
-- Never introduce a new muted-style color darker than `#8aacbb` on the dark background
+| Scale     | Class        | Size | Weight         |
+| --------- | ------------ | ---- | -------------- |
+| Heading 1 | `text-h1`    | 32px | Bold (700)     |
+| Heading 2 | `text-h2`    | 24px | Semibold (600) |
+| Heading 3 | `text-h3`    | 20px | Semibold (600) |
+| Body      | `text-body`  | 14px | Regular (400)  |
+| Small     | `text-small` | 12px | Regular (400)  |
+
+Primary font: **Inter** (loaded via `next/font/google`).
+
+## Component Styling Rules
+
+All components must follow:
+
+| Rule          | Value                                     |
+| ------------- | ----------------------------------------- |
+| Border radius | `rounded-xl` (0.75rem)                    |
+| Borders       | `border border-border`                    |
+| Shadow        | `shadow-sm`                               |
+| Transitions   | `transition-all duration-150 ease-in-out` |
+| Hover         | subtle elevation + color shift            |
+
+## Utility Classes (defined in `globals.css`)
+
+- `.stoxly-card` — standard card with theme bg, border, shadow, hover
+- `.glass-card` — backdrop-blur card for auth pages
+- `.btn-primary` / `.btn-secondary` / `.btn-danger` / `.btn-ghost` — button variants
+- `.stoxly-input` — themed input field
+- `.trend-up` / `.trend-down` / `.trend-neutral` — trend color indicators
 
 ## Spacing Scale
 
-Use consistent spacing increments. Preferred values:
+| Context            | Class       |
+| ------------------ | ----------- |
+| Card inner padding | `p-5`       |
+| Section gap        | `space-y-6` |
+| Grid gap           | `gap-4`     |
+| Page padding       | `px-6 py-6` |
+| Label → input gap  | `space-y-2` |
 
-| Context                      | Class                                      |
-| ---------------------------- | ------------------------------------------ |
-| Between form fields          | `space-y-6`                                |
-| Label → input gap            | `space-y-2.5`                              |
-| Card inner padding           | `p-6 sm:p-8` (applied by `Card` component) |
-| Card header items            | `space-y-3` (applied by `CardHeader`)      |
-| Card header → content gap    | `mt-6 sm:mt-8` (applied by `CardContent`)  |
-| Section banner padding       | `px-8 py-7` minimum                        |
-| AppShell inner panel         | `px-8 py-8 sm:px-10 lg:px-12`              |
-| Page vertical padding (auth) | `py-12 sm:py-16`                           |
+## Layout Structure
 
-## Component Padding Rules
+- **Dashboard:** Uses `app/(dashboard)/layout.tsx` — sidebar (240px, fixed) + top nav (sticky) + main content (max 1440px).
+- **Auth pages:** Centered `glass-card` on `bg-background` with subtle gradient blob.
+- All dashboard pages must be inside the `(dashboard)` route group.
 
-- **`Card`** — Default padding is `p-6 sm:p-8`. Do not override padding with smaller values (e.g., `px-1`, `p-2`).
-- **`Input`** — Height `h-12`, horizontal padding `px-4`. Do not reduce.
-- **`Button` (default)** — Height `h-11`, padding `px-4 py-2`.
-- Do not add `overflow-hidden` to outer layout containers without a specific reason; it can clip focus rings.
+## Do NOT
 
-## Layout Patterns
-
-- Auth pages: full-height two-column layout. Left = marketing/context panel. Right = dark Card with form.
-- Dashboard: `AppShell` wraps all content in a `surface-panel` with a grid-accent background.
-- Section panels inside the dashboard use `rounded-[28px] border border-border bg-surface-strong/80` with `px-8 py-7`.
-
-## Duplicate Navigation Links
-
-- Auth page navigation links (e.g., "Need an account? Register") belong in `AuthShell`, not inside form components.
-- `EmailPasswordForm` must not render its own alternate-page links; `AuthShell` handles that via `alternateHref`/`alternateLabel` props.
-
-## Neon / Glow Effects
-
-- **`.neon-border`** — Subtle cyan border + glow. Applied by default in `Card`.
-- **`.neon-text`** — Cyan text shadow for hero headings only. Do not apply to body text.
-- Glow blobs (absolute positioned, blurred) are decorative and must use `pointer-events-none`.
-- Keep glow effects subtle: do not exceed `opacity-20` / `blur-3xl` for ambient blobs.
+- Use hardcoded colors (hex, rgb, hsl) — use Tailwind theme tokens
+- Use inline styles
+- Override card padding with smaller values
+- Use neon/glow effects — keep the UI clean and minimal
+- Skip transitions on interactive elements

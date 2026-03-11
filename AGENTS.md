@@ -152,11 +152,21 @@ Rules:
 - Use TanStack Query for API calls
 - Avoid unnecessary client-side state
 - Use shadcn/ui components for UI
+- **All UI must follow the Stoxly Design System** (see `docs/design-system.md`)
 
 State Management:
 
 Server state → TanStack Query
 UI state → Zustand
+
+Design System Rules:
+
+- Never use hardcoded hex/rgb/hsl values — use Tailwind theme tokens
+- Use typography scale classes: `text-h1`, `text-h2`, `text-h3`, `text-body`, `text-small`
+- Use utility classes: `.stoxly-card`, `.glass-card`, `.btn-primary`, `.stoxly-input`
+- Use `rounded-xl`, `border border-border`, `shadow-sm`, `transition-all duration-150 ease-in-out`
+- Dashboard pages must use the `(dashboard)` route group layout
+- Auth pages use centered `glass-card` layout
 
 ---
 

@@ -1,22 +1,16 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, Manrope } from "next/font/google";
-import { AppProviders } from "@/app/providers";
+import { Inter } from "next/font/google";
+import { Providers } from "@/components/providers";
 import "./globals.css";
 
-const manrope = Manrope({
-  variable: "--font-manrope",
+const inter = Inter({
   subsets: ["latin"],
-});
-
-const ibmPlexMono = IBM_Plex_Mono({
-  variable: "--font-ibm-plex-mono",
-  weight: ["400", "500"],
-  subsets: ["latin"],
+  variable: "--font-inter",
 });
 
 export const metadata: Metadata = {
   title: "Stoxly",
-  description: "Real-time portfolio tracking and stock monitoring.",
+  description: "Stock portfolio management platform",
 };
 
 export default function RootLayout({
@@ -25,11 +19,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body
-        className={`${manrope.variable} ${ibmPlexMono.variable} antialiased`}
-      >
-        <AppProviders>{children}</AppProviders>
+    <html lang="en" className="dark">
+      <body className={`${inter.variable} font-sans antialiased`}>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

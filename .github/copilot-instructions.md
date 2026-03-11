@@ -96,6 +96,68 @@ UI
 - Use TailwindCSS
 - Use shadcn/ui components
 - Maintain consistent spacing and layout patterns
+- Follow the Stoxly design system (see `docs/design-system.md`)
+
+---
+
+# Stoxly Design System
+
+All generated UI code must follow the Stoxly design system.
+
+## Color Variables
+
+All colors are defined as CSS custom properties in `globals.css` and mapped to Tailwind tokens in `tailwind.config.ts`.
+
+Key tokens:
+
+- Backgrounds: `bg-background` (#0F1117), `bg-surface` (#171A21), `bg-card` (#1E222D)
+- Primary: `bg-primary` (#4F7FFF), `hover:bg-primary-hover` (#3A6AEE)
+- Semantic: `text-success` (#22C55E), `text-danger` (#EF4444), `text-warning` (#F59E0B)
+- Text: `text-text-primary` (#E6E8EE), `text-text-secondary` (#9CA3AF), `text-muted` (#6B7280)
+- Borders: `border-border` (#2A2F3A), `border-border-hover` (#3A4050)
+
+Rules:
+
+- Never use hardcoded hex/rgb/hsl values in components
+- Always use Tailwind theme token classes
+- Use `text-text-primary` for headings and primary labels
+- Use `text-text-secondary` for descriptions and secondary content
+
+## Typography
+
+Font: Inter. Use the predefined typography scale:
+
+- `text-h1` (32px bold), `text-h2` (24px semibold), `text-h3` (20px semibold)
+- `text-body` (14px), `text-small` (12px)
+
+## Component Styling
+
+- Border radius: `rounded-xl`
+- Borders: `border border-border`
+- Shadow: `shadow-sm`
+- Transitions: `transition-all duration-150 ease-in-out`
+
+## Utility Classes
+
+Use these predefined utilities from `globals.css`:
+
+- `.stoxly-card` — themed card
+- `.glass-card` — backdrop-blur card for auth pages
+- `.btn-primary`, `.btn-secondary`, `.btn-danger`, `.btn-ghost` — buttons
+- `.stoxly-input` — form inputs
+- `.trend-up`, `.trend-down`, `.trend-neutral` — stock trend colors
+
+## Dashboard Layout
+
+Dashboard pages must use the `(dashboard)` route group layout with:
+
+- Fixed sidebar (240px)
+- Sticky top navigation
+- Content area max-width 1440px
+
+## Auth Pages
+
+Auth pages use a centered glass-card layout with a subtle gradient background.
 
 ---
 
