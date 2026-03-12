@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Stoxly.Api.MarketData.DTOs;
 using Stoxly.Api.MarketData.Interfaces;
 
 namespace Stoxly.Api.Controllers;
@@ -49,6 +50,37 @@ public sealed class MarketController : ControllerBase
             return NotFound(new { error = $"No price data available for symbol '{symbol.ToUpperInvariant()}'." });
 
         return Ok(price);
+    }
+
+    /// <summary>Returns the closing price for a symbol on a specific historical date (YYYY-MM-DD).</summary>
+    [HttpGet("historical-price")]
+    public async Task<IActionResult> GetHistoricalPrice(
+        [FromQuery] string? symbol,
+        [FromQuery] string? date)
+    {
+        if (string.IsNullOrWhiteSpace(symbol))
+            return BadRequest(new { error = "Query parameter 'symbol' is required." });
+
+        var sym = symbol.Trim().ToUpperInvariant();
+
+        if (!SafeQueryPattern.IsMatch(sym))
+            return BadRequest(new { error = "Symbol contains invalid characters." });
+
+        if (string.IsNullOrWhiteSpace(date))
+            return BadRequest(new { error = "Query parameter 'date' is required." });
+
+        if (!DateOnly.TryParseExact(date.Trim(), "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var requestedDate))
+            return BadRequest(new { error = "Parameter 'date' must be in YYYY-MM-DD format." });
+
+        if (requestedDate > DateOnly.FromDateTime(DateTime.UtcNow))
+            return BadRequest(new { error = "Cannot request a price for a future date." });
+
+        var result = await _marketDataService.GetHistoricalPriceAsync(sym, requestedDate);
+
+        if (result is null)
+            return NotFound(new { error = $"No price data available for '{sym}' on {date}." });
+
+        return Ok(result);
     }
 
     /// <summary>Returns current prices for multiple stock symbols supplied in the request body.</summary>

@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Stoxly.Api.MarketData.Caching;
 using Stoxly.Api.MarketData.Clients;
 using Stoxly.Api.MarketData.DTOs;
@@ -9,18 +10,28 @@ namespace Stoxly.Api.MarketData.Services;
 
 public sealed class MarketDataService : IMarketDataService
 {
+    private const string DateFormat = "yyyy-MM-dd";
     private static readonly TimeSpan PriceCacheTtl = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan SearchCacheTtl = TimeSpan.FromMinutes(5);
 
     private readonly IFinnhubClient _finnhubClient;
+    private readonly IAlphaVantageClient _alphaVantageClient;
     private readonly IMarketDataCache _cache;
     private readonly ISymbolRepository _symbolRepository;
+    private readonly ILogger<MarketDataService> _logger;
 
-    public MarketDataService(IFinnhubClient finnhubClient, IMarketDataCache cache, ISymbolRepository symbolRepository)
+    public MarketDataService(
+        IFinnhubClient finnhubClient,
+        IAlphaVantageClient alphaVantageClient,
+        IMarketDataCache cache,
+        ISymbolRepository symbolRepository,
+        ILogger<MarketDataService> logger)
     {
         _finnhubClient = finnhubClient;
+        _alphaVantageClient = alphaVantageClient;
         _cache = cache;
         _symbolRepository = symbolRepository;
+        _logger = logger;
     }
 
     public async Task<StockPriceDto?> GetPriceAsync(string symbol)
@@ -129,11 +140,11 @@ public sealed class MarketDataService : IMarketDataService
         // Historical data is immutable once the trading day closes — cache 24 h.
         // Use string-keyed dict because DateOnly is not directly JSON-serialisable
         // by the default System.Text.Json converters in all target runtimes.
-        var cacheKey = $"stock:candles:{normalised}:{from:yyyy-MM-dd}:{to:yyyy-MM-dd}";
+        var cacheKey = $"stock:candles:{normalised}:{from.ToString(DateFormat)}:{to.ToString(DateFormat)}";
         var cached = await _cache.GetAsync<Dictionary<string, decimal>>(cacheKey);
         if (cached is not null)
             return cached.ToDictionary(
-                kvp => DateOnly.ParseExact(kvp.Key, "yyyy-MM-dd"),
+                kvp => DateOnly.ParseExact(kvp.Key, DateFormat, System.Globalization.CultureInfo.InvariantCulture),
                 kvp => kvp.Value);
 
         var closes = await _finnhubClient.GetDailyClosesAsync(normalised, from, to);
@@ -141,11 +152,77 @@ public sealed class MarketDataService : IMarketDataService
         if (closes.Count > 0)
         {
             var serialisable = closes
-                .ToDictionary(kvp => kvp.Key.ToString("yyyy-MM-dd"), kvp => kvp.Value);
+                .ToDictionary(kvp => kvp.Key.ToString(DateFormat), kvp => kvp.Value);
             await _cache.SetAsync(cacheKey, serialisable, TimeSpan.FromHours(24));
         }
 
         return closes;
+    }
+
+    private static readonly TimeSpan HistoricalPriceCacheTtl = TimeSpan.FromHours(24);
+
+    public async Task<StockHistoricalPriceDto?> GetHistoricalPriceAsync(string symbol, DateOnly date)
+    {
+        var normalised = symbol.Trim().ToUpperInvariant();
+        var dateStr = date.ToString(DateFormat);
+        var cacheKey = CacheKey.HistoricalPrice(normalised, dateStr);
+
+        var cached = await _cache.GetAsync<StockHistoricalPriceDto>(cacheKey);
+        if (cached is not null)
+        {
+            _logger.LogDebug(
+                "Cache hit for historical price {Symbol} on {Date}", normalised, dateStr);
+            return cached;
+        }
+
+        _logger.LogInformation(
+            "Fetching historical price for {Symbol} on {Date}", normalised, dateStr);
+
+        try
+        {
+            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+            if (date == today)
+            {
+                // Today: use live Finnhub quote — intraday candle data is not yet settled.
+                var quote = await GetPriceAsync(normalised);
+                if (quote is null)
+                {
+                    _logger.LogWarning("No live price available for {Symbol}", normalised);
+                    return null;
+                }
+                // GetPriceAsync already caches with PriceCacheTtl; skip the 24 h cache.
+                return new StockHistoricalPriceDto(normalised, dateStr, quote.CurrentPrice);
+            }
+
+            // Historical date: use AlphaVantage TIME_SERIES_DAILY.
+            var closes = await _alphaVantageClient.GetDailyClosesAsync(normalised, date, date);
+
+            if (!closes.TryGetValue(date, out var price))
+            {
+                _logger.LogWarning(
+                    "No historical price data available for {Symbol} on {Date}",
+                    normalised, dateStr);
+                return null;
+            }
+
+            var result = new StockHistoricalPriceDto(normalised, dateStr, price);
+            await _cache.SetAsync(cacheKey, result, HistoricalPriceCacheTtl);
+
+            _logger.LogInformation(
+                "Historical price for {Symbol} on {Date}: {Price}",
+                normalised, dateStr, price);
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Error fetching price for {Symbol} on {Date}",
+                normalised, dateStr);
+            return null;
+        }
     }
 
     private Task PersistSymbolsAsync(IReadOnlyList<StockSymbolDto> dtos)
@@ -165,4 +242,5 @@ internal static class CacheKey
 {
     public static string Price(string symbol) => $"stock:price:{symbol}";
     public static string Search(string query) => $"market:search:{query.Trim().ToLowerInvariant()}";
+    public static string HistoricalPrice(string symbol, string date) => $"stock:historical:{symbol}:{date}";
 }

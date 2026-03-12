@@ -5,17 +5,6 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/auth/auth-provider";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
-} from "@/components/ui/card";
 
 interface PasswordStrength {
   score: number;
@@ -28,7 +17,7 @@ function getPasswordStrength(password: string): PasswordStrength {
   if (password.length >= 8) score++;
   if (password.length >= 12) score++;
   if (/[A-Z]/.test(password)) score++;
-  if (/[0-9]/.test(password)) score++;
+  if (/\d/.test(password)) score++;
   if (/[^A-Za-z0-9]/.test(password)) score++;
 
   if (score <= 1) return { score, label: "Weak", color: "bg-danger" };
@@ -80,28 +69,42 @@ export default function RegisterPage() {
   }
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center bg-background">
-      {/* Subtle gradient backdrop */}
+    <main className="relative flex min-h-screen items-center justify-center bg-black">
+      {/* Ambient glow */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 left-1/2 h-[600px] w-[600px] -translate-x-1/2 rounded-full bg-primary/5 blur-3xl" />
+        <div
+          className="absolute left-1/2 top-1/3 h-[700px] w-[700px] -translate-x-1/2 -translate-y-1/2 rounded-full blur-[160px]"
+          style={{ background: "rgba(10,132,255,0.06)" }}
+        />
       </div>
 
-      <Card className="relative w-full max-w-md border-border bg-card/80 shadow-lg backdrop-blur-xl">
-        <CardHeader className="items-center text-center">
-          <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-primary">
-            <span className="text-lg font-bold text-primary-foreground">S</span>
+      <div className="relative w-full max-w-[380px] px-5 py-8">
+        {/* Logo */}
+        <div className="mb-10 text-center">
+          <div className="mx-auto mb-5 flex h-[60px] w-[60px] items-center justify-center rounded-[18px] bg-primary">
+            <span className="text-[26px] font-bold text-white">S</span>
           </div>
-          <CardTitle>Create your account</CardTitle>
-          <CardDescription>
+          <h1
+            className="text-[28px] font-bold text-text-primary"
+            style={{ letterSpacing: "-0.025em" }}
+          >
+            Create account
+          </h1>
+          <p className="mt-1.5 text-[15px] text-text-secondary">
             Start tracking your portfolio with Stoxly
-          </CardDescription>
-        </CardHeader>
+          </p>
+        </div>
 
-        <CardContent>
-          <form onSubmit={handleRegister} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
+        <form onSubmit={handleRegister} className="space-y-3">
+          <div className="overflow-hidden rounded-2xl bg-card">
+            <div
+              className="px-4 py-3.5"
+              style={{ borderBottom: "0.5px solid rgba(255,255,255,0.08)" }}
+            >
+              <p className="mb-1.5 text-[11px] font-medium uppercase tracking-widest text-muted">
+                Email
+              </p>
+              <input
                 id="email"
                 type="email"
                 placeholder="you@example.com"
@@ -109,26 +112,28 @@ export default function RegisterPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                className="w-full bg-transparent text-[15px] text-text-primary placeholder:text-muted/50 focus:outline-none"
               />
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <Input
+            <div className="px-4 py-3.5">
+              <p className="mb-1.5 text-[11px] font-medium uppercase tracking-widest text-muted">
+                Password
+              </p>
+              <div className="flex items-center gap-2">
+                <input
                   id="password"
                   type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
                   autoComplete="new-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pr-10"
                   required
+                  className="flex-1 bg-transparent text-[15px] text-text-primary placeholder:text-muted/50 focus:outline-none"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((prev) => !prev)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary transition-colors hover:text-text-primary"
+                  className="text-muted transition-colors hover:text-text-secondary"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? (
@@ -138,69 +143,80 @@ export default function RegisterPage() {
                   )}
                 </button>
               </div>
-              {/* Strength indicator */}
-              {password.length > 0 && (
-                <div className="space-y-1">
-                  <div className="flex gap-1">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <div
-                        key={i}
-                        className={`h-1 flex-1 rounded-full transition-colors ${
-                          i < strength.score ? strength.color : "bg-border"
-                        }`}
-                      />
-                    ))}
-                  </div>
-                  <p className="text-small text-text-secondary">
-                    {strength.label}
-                    {password.length < 8 && " — minimum 8 characters"}
-                  </p>
-                </div>
-              )}
             </div>
-
-            {error && <p className="text-small text-danger">{error}</p>}
-
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={loading || !isPasswordValid}
-            >
-              {loading ? "Creating account…" : "Create account"}
-            </Button>
-          </form>
-
-          {/* Divider */}
-          <div className="my-6 flex items-center gap-3">
-            <div className="h-px flex-1 bg-border" />
-            <span className="text-small text-muted">or</span>
-            <div className="h-px flex-1 bg-border" />
           </div>
 
-          {/* Google signup */}
-          <Button
-            variant="secondary"
-            className="w-full gap-2"
-            onClick={handleGoogleSignup}
-            disabled={loading}
-          >
-            <GoogleIcon className="h-4 w-4" />
-            Continue with Google
-          </Button>
-        </CardContent>
+          {password.length > 0 && (
+            <div className="space-y-2 px-1">
+              <div className="flex gap-1">
+                {(["s1", "s2", "s3", "s4", "s5"] as const).map((id, i) => (
+                  <div
+                    key={id}
+                    className={`h-1 flex-1 rounded-full transition-colors ${
+                      i < strength.score ? strength.color : "bg-border"
+                    }`}
+                  />
+                ))}
+              </div>
+              <p className="text-[12px] text-text-secondary">
+                {strength.label}
+                {password.length < 8 && " — minimum 8 characters"}
+              </p>
+            </div>
+          )}
 
-        <CardFooter className="justify-center">
-          <p className="text-small text-text-secondary">
-            Already have an account?{" "}
-            <Link
-              href="/login"
-              className="font-medium text-primary transition-colors hover:text-primary-hover"
+          {error && (
+            <div
+              className="rounded-xl px-4 py-3 text-[13px] text-danger"
+              style={{ background: "rgba(255,69,58,0.1)" }}
             >
-              Sign in
-            </Link>
-          </p>
-        </CardFooter>
-      </Card>
+              {error}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading || !isPasswordValid}
+            className="w-full rounded-2xl bg-primary py-4 text-[15px] font-semibold text-white transition-all hover:bg-primary-hover active:scale-[0.98] disabled:opacity-50"
+          >
+            {loading ? "Creating account…" : "Create Account"}
+          </button>
+        </form>
+
+        {/* Divider */}
+        <div className="my-5 flex items-center gap-4">
+          <div
+            className="h-px flex-1"
+            style={{ background: "rgba(255,255,255,0.1)" }}
+          />
+          <span className="text-[12px] text-muted">or</span>
+          <div
+            className="h-px flex-1"
+            style={{ background: "rgba(255,255,255,0.1)" }}
+          />
+        </div>
+
+        {/* Google */}
+        <button
+          type="button"
+          onClick={handleGoogleSignup}
+          disabled={loading}
+          className="flex w-full items-center justify-center gap-2.5 rounded-2xl bg-card py-4 text-[15px] font-medium text-text-primary transition-all hover:brightness-125 active:scale-[0.98] disabled:opacity-50"
+        >
+          <GoogleIcon className="h-5 w-5" />
+          Continue with Google
+        </button>
+
+        <p className="mt-8 text-center text-[13px] text-text-secondary">
+          Already have an account?{" "}
+          <Link
+            href="/login"
+            className="font-medium text-primary transition-colors hover:text-primary-hover"
+          >
+            Sign in
+          </Link>
+        </p>
+      </div>
     </main>
   );
 }

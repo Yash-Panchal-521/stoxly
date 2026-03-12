@@ -17,39 +17,63 @@ export default function TopNav() {
   };
 
   return (
-    <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-surface/80 px-6 backdrop-blur-md">
+    <header
+      className="sticky top-0 z-20 flex h-[52px] items-center justify-between px-6 backdrop-blur-2xl"
+      style={{
+        background: "rgba(0,0,0,0.82)",
+        borderBottom: "0.5px solid rgba(255,255,255,0.08)",
+      }}
+    >
       {/* Search */}
-      <div className="flex items-center gap-3">
-        <div className="relative">
-          <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
-          <input
-            type="text"
-            placeholder="Search stocks, portfolios…"
-            className="stoxly-input w-72 pl-9"
-          />
-        </div>
+      <div className="relative">
+        <SearchIcon className="absolute left-3 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-muted" />
+        <input
+          type="text"
+          placeholder="Search stocks, portfolios…"
+          className="h-9 w-64 rounded-[10px] pl-9 pr-3 text-[14px] text-text-primary placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-primary/40"
+          style={{ background: "rgba(255,255,255,0.07)" }}
+        />
       </div>
 
       {/* Right side */}
-      <div className="flex items-center gap-4">
-        <button className="rounded-xl p-2 text-text-secondary transition-all duration-150 ease-in-out hover:bg-card hover:text-text-primary">
-          <BellIcon className="h-4 w-4" />
+      <div className="flex items-center gap-3">
+        <button className="rounded-xl p-2 text-text-secondary transition-all duration-150 hover:bg-white/[0.07] hover:text-text-primary">
+          <BellIcon className="h-[18px] w-[18px]" />
         </button>
         <div className="relative">
           <button
-            className="h-8 w-8 rounded-full bg-primary/20 text-center text-xs font-medium leading-8 text-primary focus:outline-none"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/[0.18] text-[13px] font-semibold text-primary focus:outline-none"
             onClick={() => setDropdownOpen((open) => !open)}
             aria-label="User menu"
           >
-            {user?.displayName?.[0] || "U"}
+            {user?.displayName?.[0]?.toUpperCase() ?? "U"}
           </button>
           {dropdownOpen && (
-            <div className="absolute right-0 mt-2 w-40 rounded-xl border border-border bg-card shadow-sm transition-all duration-150 ease-in-out">
+            <div
+              className="absolute right-0 mt-2 w-48 overflow-hidden rounded-[14px] shadow-2xl backdrop-blur-2xl"
+              style={{
+                background: "rgba(38,38,40,0.96)",
+                border: "0.5px solid rgba(255,255,255,0.12)",
+              }}
+            >
+              {user?.email && (
+                <div
+                  className="px-4 py-3"
+                  style={{ borderBottom: "0.5px solid rgba(255,255,255,0.08)" }}
+                >
+                  <p className="text-[11px] font-medium uppercase tracking-widest text-muted">
+                    Account
+                  </p>
+                  <p className="mt-0.5 truncate text-[13px] text-text-primary">
+                    {user.email}
+                  </p>
+                </div>
+              )}
               <button
-                className="w-full px-4 py-2 text-left text-text-secondary hover:bg-primary/10 hover:text-primary btn-ghost rounded-xl"
+                className="w-full px-4 py-3 text-left text-[14px] text-danger transition-colors hover:bg-white/[0.05]"
                 onClick={handleLogout}
               >
-                Logout
+                Sign Out
               </button>
             </div>
           )}

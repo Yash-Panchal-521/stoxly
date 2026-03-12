@@ -22,4 +22,10 @@ public interface IMarketDataService
     /// Historical data is cached in Redis for 24 hours.
     /// </summary>
     Task<IReadOnlyDictionary<DateOnly, decimal>> GetDailyClosesAsync(string symbol, DateOnly from, DateOnly to);
+
+    /// <summary>
+    /// Returns the closing price for a symbol on a specific trading date, or null if no data is available.
+    /// Wraps <see cref="GetDailyClosesAsync"/> with structured logging and graceful error handling.
+    /// </summary>
+    Task<StockHistoricalPriceDto?> GetHistoricalPriceAsync(string symbol, DateOnly date);
 }

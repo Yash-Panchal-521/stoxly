@@ -5,23 +5,24 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center whitespace-nowrap rounded-xl text-sm font-medium transition-all duration-150 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 disabled:pointer-events-none disabled:opacity-50",
+  "inline-flex items-center justify-center whitespace-nowrap rounded-[10px] text-[15px] font-medium transition-all duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 disabled:pointer-events-none disabled:opacity-50 active:scale-[0.97]",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary-hover",
-        destructive: "bg-danger text-danger-foreground hover:bg-danger/90",
+        default: "bg-primary text-white hover:bg-primary-hover",
+        destructive: "bg-danger text-white hover:bg-danger/90",
         outline:
-          "border border-border bg-transparent text-text-primary hover:bg-surface hover:border-border-hover",
+          "border border-white/[0.15] bg-transparent text-text-primary hover:bg-white/[0.06]",
         secondary:
-          "border border-border bg-surface text-text-primary hover:bg-card hover:border-border-hover",
-        ghost: "text-text-secondary hover:bg-surface hover:text-text-primary",
+          "[background:rgba(255,255,255,0.1)] text-text-primary hover:[background:rgba(255,255,255,0.15)]",
+        ghost:
+          "text-text-secondary hover:bg-white/[0.06] hover:text-text-primary",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
-        default: "h-10 px-4 py-2",
-        sm: "h-9 rounded-xl px-3",
-        lg: "h-11 rounded-xl px-8",
+        default: "h-11 px-5 py-2.5",
+        sm: "h-9 rounded-[8px] px-4 text-[14px]",
+        lg: "h-12 rounded-[12px] px-8 text-[16px]",
         icon: "h-10 w-10",
       },
     },

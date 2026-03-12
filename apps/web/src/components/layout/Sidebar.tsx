@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 const navItems = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboardIcon },
@@ -15,17 +16,33 @@ export default function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="fixed left-0 top-0 z-30 flex h-screen w-sidebar flex-col border-r border-border bg-surface">
+    <aside
+      className="fixed left-0 top-0 z-30 flex h-screen w-sidebar flex-col"
+      style={{
+        background: "rgba(6,6,6,0.97)",
+        borderRight: "0.5px solid rgba(255,255,255,0.08)",
+      }}
+    >
       {/* Brand */}
-      <div className="flex h-14 items-center gap-2 border-b border-border px-5">
-        <div className="h-7 w-7 rounded-lg bg-primary" />
-        <span className="text-base font-semibold text-text-primary">
+      <div className="flex h-[52px] items-center gap-2.5 px-5">
+        <div className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-[7px] bg-primary">
+          <span className="text-[11px] font-bold text-white">S</span>
+        </div>
+        <span
+          className="text-[16px] font-semibold text-text-primary"
+          style={{ letterSpacing: "-0.02em" }}
+        >
           Stoxly
         </span>
       </div>
 
+      <div
+        className="mx-3 h-px"
+        style={{ background: "rgba(255,255,255,0.07)" }}
+      />
+
       {/* Navigation */}
-      <nav className="flex-1 space-y-1 px-3 py-4">
+      <nav className="flex-1 space-y-0.5 px-2 py-3">
         {navItems.map((item) => {
           const isActive =
             pathname === item.href || pathname.startsWith(item.href + "/");
@@ -33,26 +50,37 @@ export default function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-all duration-150 ease-in-out ${
+              className={cn(
+                "flex items-center gap-2.5 rounded-[10px] px-3 py-2 text-[14px] font-medium transition-all duration-150",
                 isActive
-                  ? "bg-primary/10 text-primary"
-                  : "text-text-secondary hover:bg-card hover:text-text-primary"
-              }`}
+                  ? "bg-primary/[0.12] text-primary"
+                  : "text-text-secondary hover:bg-white/[0.05] hover:text-text-primary",
+              )}
             >
-              <item.icon className="h-4 w-4" />
+              <item.icon
+                className={cn(
+                  "h-[17px] w-[17px] shrink-0",
+                  isActive && "text-primary",
+                )}
+              />
               {item.label}
             </Link>
           );
         })}
       </nav>
 
+      <div
+        className="mx-3 h-px"
+        style={{ background: "rgba(255,255,255,0.07)" }}
+      />
+
       {/* Footer */}
-      <div className="border-t border-border px-3 py-4">
+      <div className="px-2 py-3">
         <Link
           href="/settings"
-          className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-text-secondary transition-all duration-150 ease-in-out hover:bg-card hover:text-text-primary"
+          className="flex items-center gap-2.5 rounded-[10px] px-3 py-2 text-[14px] font-medium text-text-secondary transition-all duration-150 hover:bg-white/[0.05] hover:text-text-primary"
         >
-          <SettingsIcon className="h-4 w-4" />
+          <SettingsIcon className="h-[17px] w-[17px] shrink-0" />
           Settings
         </Link>
       </div>

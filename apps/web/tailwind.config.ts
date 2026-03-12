@@ -47,7 +47,16 @@ const config: Config = {
         xl: "var(--radius)",
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "sans-serif"],
+        sans: [
+          "-apple-system",
+          "BlinkMacSystemFont",
+          "SF Pro Display",
+          "SF Pro Text",
+          "var(--font-inter)",
+          "Helvetica Neue",
+          "Arial",
+          "sans-serif",
+        ],
       },
       fontSize: {
         h1: ["32px", { lineHeight: "1.2", fontWeight: "700" }],
