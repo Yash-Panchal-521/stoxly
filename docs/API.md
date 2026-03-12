@@ -239,6 +239,43 @@ Response `204 No Content`
 
 # Market Data API
 
+## Get Historical Price
+
+GET `/api/market/historical-price`
+
+Requires a valid Firebase ID token.
+
+Returns the closing price for a symbol on a specific trading date. Checks Redis first (`stock:historical:{SYMBOL}:{DATE}`, 24 h TTL); falls back to Yahoo Finance. If the requested date falls on a weekend or market holiday, the price for the closest prior trading day is returned.
+
+Query parameters:
+
+| Parameter | Required | Format     | Description              |
+| --------- | -------- | ---------- | ------------------------ |
+| `symbol`  | yes      | string     | Stock ticker e.g. `AAPL` |
+| `date`    | yes      | YYYY-MM-DD | The trading date         |
+
+Example:
+
+```
+GET /api/market/historical-price?symbol=AAPL&date=2026-03-10
+```
+
+Response `200 OK`
+
+```json
+{
+  "symbol": "AAPL",
+  "date": "2026-03-10",
+  "price": 182.42
+}
+```
+
+Returns `404 Not Found` if no price data is available for the symbol and date range.
+
+Returns `400 Bad Request` if `date` is in the future or the format is invalid.
+
+---
+
 ## Get Stock Price
 
 GET `/api/market/price/{symbol}`

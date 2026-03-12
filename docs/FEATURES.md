@@ -90,7 +90,20 @@ Search results show:
 
 - stock symbol
 - company name
-- latest price
+- exchange
+
+Symbols are validated against the local database before any transaction is accepted. Users must select a known symbol via the search component.
+
+---
+
+## Historical Price Lookup
+
+The API provides closing prices for any symbol on any past trading date.
+
+- Powered by **Yahoo Finance** (no API key required, free tier unlimited).
+- Weekend and public holiday dates automatically fall back to the nearest prior trading day.
+- Results are cached in Redis for 24 hours.
+- Accessible via `GET /api/market/historical-price?symbol=AAPL&date=2026-03-10`.
 
 ---
 

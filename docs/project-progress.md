@@ -6,24 +6,26 @@
 
 ## Overall Status
 
-| Area                        | Status                             |
-| --------------------------- | ---------------------------------- |
-| Authentication              | ✅ Complete                        |
-| Portfolio Management        | ✅ Complete                        |
-| Transaction Recording       | ✅ Complete                        |
-| Holdings Tracking           | ✅ Complete                        |
-| Portfolio Metrics           | 🔄 Backend done, UI pending        |
-| Dashboard UI                | ✅ Complete                        |
-| Landing Page                | ✅ Complete                        |
-| Design System               | ✅ Complete                        |
-| Market Data Module          | ✅ Complete                        |
-| Symbol Search               | ✅ Complete (DB-first + Finnhub)   |
-| Redis Price Caching         | ✅ Complete (60 s TTL)             |
-| Background Price Worker     | ✅ Complete (30 s interval)        |
-| Real-Time Updates (SignalR) | ✅ Backend complete, frontend next |
-| Symbol Validation           | ✅ Complete                        |
-| Rate Limiting               | ✅ Complete (30 req/min per IP)    |
-| Watchlist                   | ❌ Not started                     |
+| Area                           | Status                                          |
+| ------------------------------ | ----------------------------------------------- |
+| Authentication                 | ✅ Complete                                     |
+| Portfolio Management           | ✅ Complete                                     |
+| Transaction Recording          | ✅ Complete                                     |
+| Holdings Tracking              | ✅ Complete                                     |
+| Portfolio Metrics              | 🔄 Backend done, UI pending                     |
+| Dashboard UI                   | ✅ Complete                                     |
+| Landing Page                   | ✅ Complete                                     |
+| Design System                  | ✅ Complete                                     |
+| Market Data Module             | ✅ Complete                                     |
+| Symbol Search                  | ✅ Complete (DB-first + Finnhub)                |
+| Redis Price Caching            | ✅ Complete (60 s live, 24 h historical)        |
+| Background Price Worker        | ✅ Complete (30 s interval)                     |
+| Real-Time Updates (SignalR)    | ✅ Backend complete, frontend next              |
+| Symbol Validation              | ✅ Complete                                     |
+| Rate Limiting                  | ✅ Complete (30 req/min per IP)                 |
+| Historical Price API           | ✅ Complete (Yahoo Finance, weekend fallback)   |
+| Alpha Vantage integration      | 🗑️ Removed (replaced by Yahoo Finance)         |
+| Watchlist                      | ❌ Not started                                  |
 
 ---
 
@@ -65,10 +67,11 @@ A consistent visual language is established across the app — color tokens, typ
 
 A self-contained `MarketData` module handles all stock data concerns:
 
-- **Finnhub integration** — typed HTTP client (`IFinnhubClient` / `FinnhubClient`) for `/quote` and `/search` endpoints.
-- **Redis caching** — `IMarketDataCache` / `RedisMarketDataCache` backed by `IDistributedCache`. Price cache key format: `stock:price:{SYMBOL}`. Only the compact fields (`price`, `change`, `changePercent`, `updatedAt`) are stored — TTL 60 seconds. Search results cached at `market:search:{query}` for 5 minutes.
-- **MarketDataService** — orchestrates Redis-first lookup, Finnhub fallback, and symbol persistence.
-- **MarketController** — exposes `GET /api/market/price/{symbol}`, `POST /api/market/prices` (batch), and `GET /api/market/search?q=` endpoints.
+- **Finnhub integration** — typed HTTP client (`IFinnhubClient` / `FinnhubClient`) for `/quote`, `/search`, and `/stock/candle` endpoints. Used for live prices and bulk quotes.
+- **Yahoo Finance integration** — typed HTTP client (`IYahooFinanceClient` / `YahooFinanceClient`) calling `https://query1.finance.yahoo.com/v8/finance/chart/{symbol}`. Used exclusively for historical daily closing prices. Handles weekend/holiday fallback by scanning up to 14 prior trading days.
+- **Redis caching** — `IMarketDataCache` / `RedisMarketDataCache` backed by `IDistributedCache`. Live price key: `stock:price:{SYMBOL}` (60 s TTL). Historical price key: `stock:historical:{SYMBOL}:{YYYY-MM-DD}` (24 h TTL). Search results cached at `market:search:{query}` (5 min).
+- **MarketDataService** — orchestrates Redis-first lookup, Finnhub or Yahoo Finance fallback depending on query type, and symbol persistence.
+- **MarketController** — exposes `GET /api/market/price/{symbol}`, `POST /api/market/prices` (batch), `GET /api/market/search?q=`, and `GET /api/market/historical-price?symbol=&date=` endpoints.
 
 ### Symbol Search
 
@@ -118,3 +121,4 @@ Errors are caught and logged per tick so the loop never crashes the host.
 | Portfolio metrics UI           | Unblock once live prices flow into `PortfolioMetricsService`       |
 | Apply EF migration             | Run `dotnet ef database update` to create `symbols` table in prod  |
 | Set Finnhub API key            | Populate `Finnhub:ApiKey` in production config                     |
+| Historical price charts        | Frontend chart component backed by `/api/market/historical-price`  |

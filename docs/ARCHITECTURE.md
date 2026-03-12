@@ -38,10 +38,21 @@ Real-time flow:
 
 ```
 PriceUpdateWorker (every 30 s)
-→ IMarketDataService (Redis-first, Finnhub fallback)
+→ IMarketDataService.GetPricesAsync (Redis-first, Finnhub fallback for live quotes)
 → Redis cache updated
 → PriceHub broadcasts PriceUpdated via SignalR
 → Frontend updates ticker / portfolio value
+```
+
+Historical price flow:
+
+```
+GET /api/market/historical-price?symbol=AAPL&date=2026-03-10
+→ MarketDataService.GetHistoricalPriceAsync
+→ Redis check (stock:historical:{SYMBOL}:{DATE}, 24 h TTL)
+→ On miss: YahooFinanceClient fetches daily candles, picks closest prior trading day
+→ Result written to Redis
+→ StockHistoricalPriceDto returned
 ```
 
 Authentication flow:
@@ -150,7 +161,8 @@ BackgroundServices/   → PriceUpdateWorker
 MarketData/
   Caching/            → IMarketDataCache, RedisMarketDataCache, StockPriceCacheEntry
   Clients/            → IFinnhubClient, FinnhubClient, FinnhubOptions
-  DTOs/               → StockPriceDto, SymbolSearchResultDto, StockSymbolDto
+                         IYahooFinanceClient, YahooFinanceClient
+  DTOs/               → StockPriceDto, StockHistoricalPriceDto, SymbolSearchResultDto, StockSymbolDto
   Interfaces/         → IMarketDataService
   Services/           → MarketDataService
 ```
@@ -179,12 +191,25 @@ All external market data concerns are encapsulated in `MarketData/`.
 
 ## Finnhub Client
 
-`IFinnhubClient` / `FinnhubClient` provides two operations:
+`IFinnhubClient` / `FinnhubClient` provides:
 
 - `GetQuoteAsync(symbol)` → maps Finnhub `/quote` response to `StockPriceDto`
+- `GetBulkQuotesAsync(symbols)` → concurrent `/quote` calls with a 10-slot semaphore
 - `SearchSymbolsAsync(query)` → maps Finnhub `/search` response to `IReadOnlyList<StockSymbolDto>`
+- `GetDailyClosesAsync(symbol, from, to)` → Finnhub `/stock/candle` (resolution `D`)
 
 The base URL and API key are configured via `FinnhubOptions` bound to the `Finnhub` configuration section.
+
+## Yahoo Finance Client
+
+`IYahooFinanceClient` / `YahooFinanceClient` provides historical daily price data:
+
+- `GetDailyClosesAsync(symbol, from, to)` → calls `https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1d&period1=…&period2=…`. Parses the `timestamp` array and the `indicators.quote[0].close` array into a `Dictionary<DateOnly, decimal>`.
+- `GetHistoricalPriceAsync(symbol, date)` → fetches 14 days ending on `date`, returns the closing price for `date` or the nearest prior trading day if `date` falls on a weekend or market holiday.
+
+No API key is required. A `User-Agent` header is set on the `HttpClient` to avoid 403 responses from Yahoo's CDN.
+
+Alpha Vantage has been fully removed. All historical price lookups now route through Yahoo Finance.
 
 ## Redis Caching
 
@@ -192,10 +217,12 @@ The base URL and API key are configured via `FinnhubOptions` bound to the `Finnh
 
 Cache key schema:
 
-| Key pattern             | Value type                    | TTL   |
-| ----------------------- | ----------------------------- | ----- |
-| `stock:price:{SYMBOL}`  | `StockPriceCacheEntry`        | 60 s  |
-| `market:search:{query}` | `List<SymbolSearchResultDto>` | 5 min |
+| Key pattern                          | Value type                    | TTL   |
+| ------------------------------------ | ----------------------------- | ----- |
+| `stock:price:{SYMBOL}`               | `StockPriceCacheEntry`        | 60 s  |
+| `stock:historical:{SYMBOL}:{DATE}`   | `StockHistoricalPriceDto`     | 24 h  |
+| `stock:candles:{SYMBOL}:{FROM}:{TO}` | `Dictionary<string, decimal>` | 24 h  |
+| `market:search:{query}`              | `List<SymbolSearchResultDto>` | 5 min |
 
 `StockPriceCacheEntry` stores only `{ Price, Change, ChangePercent, UpdatedAt }` — the minimal fields needed by price tickers — rather than the full OHLC `StockPriceDto`.
 
@@ -204,8 +231,9 @@ Cache key schema:
 Orchestrates:
 
 1. Read from Redis (`IMarketDataCache`).
-2. On miss: call Finnhub (`IFinnhubClient`), write result back to Redis.
-3. For symbol search: query `symbols` table first (`ISymbolRepository`), supplement from Finnhub when < 5 local results, upsert Finnhub results into the table, cache the merged list.
+2. On miss: call Finnhub (`IFinnhubClient`) for live prices, Yahoo Finance (`IYahooFinanceClient`) for historical prices; write result back to Redis.
+3. For `GetHistoricalPriceAsync`: if the requested date is today, falls back to the live Finnhub quote; otherwise delegates to `IYahooFinanceClient.GetHistoricalPriceAsync` with weekend/holiday fallback built in.
+4. For symbol search: query `symbols` table first (`ISymbolRepository`), supplement from Finnhub when < 5 local results, upsert Finnhub results into the table, cache the merged list.
 
 ---
 
@@ -232,7 +260,7 @@ Server-to-client event:
 
 1. Opens a DI scope to resolve `AppDbContext` and `IMarketDataService`.
 2. Queries distinct symbols from all non-deleted transactions.
-3. Calls `IMarketDataService.GetPricesAsync` (Redis-first, Finnhub fallback).
+3. Calls `IMarketDataService.GetPricesAsync` (Redis-first, Finnhub `/quote` fallback).
 4. Broadcasts `PriceUpdated` to per-symbol SignalR groups.
 
 Watchlist symbols will be merged into the collection once that feature is implemented.
