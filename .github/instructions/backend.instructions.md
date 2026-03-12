@@ -102,6 +102,29 @@ Guidelines:
 
 ---
 
+# DateTime and PostgreSQL
+
+PostgreSQL `timestamptz` columns require `DateTime` values with `DateTimeKind.Utc`.
+Npgsql **rejects** `DateTimeKind.Unspecified` and will throw at runtime.
+
+**Rules:**
+
+- Always use `DateTime.UtcNow` when setting audit fields (`CreatedAt`, `UpdatedAt`, `DeletedAt`).
+- When accepting a `DateTime` from user input (e.g. a DTO), always explicitly specify the kind before persisting:
+
+```csharp
+// CORRECT
+DateTime.SpecifyKind(request.TradeDate.Date, DateTimeKind.Utc)
+
+// WRONG — Kind=Unspecified will throw at runtime
+request.TradeDate.Date
+```
+
+- Never pass a raw `DateTime` obtained from `.Date`, deserialization, or any external source directly to EF Core without ensuring `Kind=Utc`.
+- Model default values must use `DateTime.UtcNow`, not `DateTime.Now`.
+
+---
+
 # Realtime System
 
 Realtime updates use **SignalR**.

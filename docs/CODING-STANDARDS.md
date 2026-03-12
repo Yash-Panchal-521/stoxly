@@ -231,6 +231,32 @@ apps/
 
 ---
 
+# DateTime Handling
+
+All `DateTime` values stored in PostgreSQL must have `DateTimeKind.Utc`.
+Npgsql rejects `DateTimeKind.Unspecified` for `timestamptz` columns and throws at runtime.
+
+Rules:
+
+- Use `DateTime.UtcNow` for all audit/timestamp fields (`CreatedAt`, `UpdatedAt`, `DeletedAt`).
+- When mapping a user-supplied `DateTime` (e.g. from a DTO) to a model, always call `DateTime.SpecifyKind(value, DateTimeKind.Utc)` before saving.
+- Never use `.Date` alone on an inbound `DateTime` — wrap it: `DateTime.SpecifyKind(value.Date, DateTimeKind.Utc)`.
+- Model property initializers must use `DateTime.UtcNow`, not `DateTime.Now`.
+
+Example:
+
+```csharp
+// Correct
+TradeDate = DateTime.SpecifyKind(request.TradeDate.Date, DateTimeKind.Utc);
+CreatedAt = DateTime.UtcNow;
+
+// Wrong — will throw at runtime
+TradeDate = request.TradeDate.Date;
+CreatedAt = DateTime.Now;
+```
+
+---
+
 # Error Handling
 
 Errors should be handled consistently.

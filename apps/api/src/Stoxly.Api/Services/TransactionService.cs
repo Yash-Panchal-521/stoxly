@@ -30,7 +30,7 @@ public class TransactionService : ITransactionService
             Quantity = request.Quantity,
             Price = request.Price,
             Fee = request.Fee,
-            TradeDate = request.TradeDate.Date,
+            TradeDate = DateTime.SpecifyKind(request.TradeDate.Date, DateTimeKind.Utc),
             Notes = request.Notes?.Trim(),
         };
 
@@ -59,7 +59,7 @@ public class TransactionService : ITransactionService
         transaction.Quantity = request.Quantity;
         transaction.Price = request.Price;
         transaction.Fee = request.Fee;
-        transaction.TradeDate = request.TradeDate.Date;
+        transaction.TradeDate = DateTime.SpecifyKind(request.TradeDate.Date, DateTimeKind.Utc);
         transaction.Notes = request.Notes?.Trim();
 
         var updated = await _transactionRepository.UpdateTransactionAsync(transaction);
