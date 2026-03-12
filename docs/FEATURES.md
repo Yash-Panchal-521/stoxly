@@ -109,9 +109,11 @@ The API provides closing prices for any symbol on any past trading date.
 
 ## Watchlist
 
-Users can track stocks without owning them.
+**Status: Not yet implemented.**
 
-Capabilities:
+Users will be able to track stocks without owning them.
+
+Planned capabilities:
 
 - add stocks to watchlist
 - remove stocks
@@ -120,17 +122,46 @@ Capabilities:
 
 ---
 
-## Real-Time Updates
+## Real-Time Price Updates
 
-Stoxly provides real-time updates using SignalR.
+Stoxly provides live stock price updates using **SignalR**. The backend pushes price changes every 30 seconds; the frontend receives them instantly without polling.
 
-Live updates include:
+### Backend
 
-- stock price changes
-- portfolio value updates
-- watchlist price updates
+- `PriceUpdateWorker` ticks every 30 s, calls `IMarketDataService.GetPricesAsync` (Redis-first, Finnhub fallback) for all held symbols, and broadcasts `PriceUpdated` events via `PriceHub`.
+- `IMarketPriceService` / `LiveMarketPriceService` — thin bridge that gives `HoldingsService` and `PortfolioMetricsService` access to current prices at request time.
 
-This eliminates the need for frequent API polling.
+### Frontend
+
+- `apps/web/src/lib/signalr.ts` — `createPriceHubConnection()` factory.
+- `apps/web/src/hooks/use-price-socket.ts` — `usePriceSocket(symbols)` hook returns a live `Record<string, PriceUpdateDto>` price-override map.
+- Holdings rows flash when a live price override arrives.
+- Dashboard stat cards aggregate live portfolio values across all portfolios.
+
+---
+
+## Live Portfolio Metrics
+
+The `GET /api/portfolios/{id}/metrics` endpoint returns portfolio-level aggregates resolved against live market prices:
+
+- `portfolioValue` — current market value of all holdings
+- `totalInvested` — total cost basis
+- `unrealizedProfit` / `realizedProfit` / `totalProfit`
+
+The frontend calls this via `useMetrics(portfolioId)` (TanStack Query, 30 s stale time) on the portfolio detail page.
+
+---
+
+## Theme Mode Toggle
+
+Users can switch between **dark mode** (default) and **light mode** using the Sun/Moon toggle button in the top navigation bar.
+
+Implementation:
+
+- Powered by **`next-themes`** with `attribute="class"` strategy.
+- The `html` element receives the `light` class when light mode is active; all CSS variables respond automatically.
+- `ThemeToggle` component lives in `apps/web/src/components/ui/theme-toggle.tsx`.
+- Preference persists in `localStorage` across sessions.
 
 ---
 

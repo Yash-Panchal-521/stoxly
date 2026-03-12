@@ -17,45 +17,91 @@ Inspired by: Linear, Stripe Dashboard, Vercel, TradingView.
 
 ## Color System
 
-All colors are defined as CSS custom properties in `globals.css` and mapped to Tailwind tokens in `tailwind.config.ts`.
+All colors are defined as CSS custom properties in `globals.css` and mapped to Tailwind tokens in `tailwind.config.ts`. The system supports a **dark mode (default)** and a **light mode** controlled by the `html.light` class.
 
-### Backgrounds
+### Dark Mode Palette (default)
+
+#### Backgrounds
 
 | Token           | Variable       | Hex       | Usage                    |
 | --------------- | -------------- | --------- | ------------------------ |
-| `bg-background` | `--background` | `#0F1117` | Page background          |
-| `bg-surface`    | `--surface`    | `#171A21` | Sidebar, elevated panels |
-| `bg-card`       | `--card`       | `#1E222D` | Cards, dialogs           |
+| `bg-background` | `--background` | `#000000` | Page background          |
+| `bg-surface`    | `--surface`    | `#1C1C1E` | Sidebar, elevated panels |
+| `bg-card`       | `--card`       | `#2C2C2E` | Cards, dialogs           |
 
-### Brand / Accent
+#### Brand / Accent
 
 | Token              | Variable          | Hex       |
 | ------------------ | ----------------- | --------- |
-| `bg-primary`       | `--primary`       | `#4F7FFF` |
-| `bg-primary-hover` | `--primary-hover` | `#3A6AEE` |
+| `bg-primary`       | `--primary`       | `#0A84FF` |
+| `bg-primary-hover` | `--primary-hover` | `#0070E0` |
 
-### Semantic
+#### Semantic
 
 | Token                         | Variable    | Hex       | Usage                 |
 | ----------------------------- | ----------- | --------- | --------------------- |
-| `text-success` / `bg-success` | `--success` | `#22C55E` | Positive trends, buy  |
-| `text-danger` / `bg-danger`   | `--danger`  | `#EF4444` | Negative trends, sell |
-| `text-warning` / `bg-warning` | `--warning` | `#F59E0B` | Warnings, cautions    |
+| `text-success` / `bg-success` | `--success` | `#30D158` | Positive trends, buy  |
+| `text-danger` / `bg-danger`   | `--danger`  | `#FF453A` | Negative trends, sell |
+| `text-warning` / `bg-warning` | `--warning` | `#FFD60A` | Warnings, cautions    |
 
-### Text
+#### Text
 
 | Token                 | Variable           | Hex       |
 | --------------------- | ------------------ | --------- |
-| `text-text-primary`   | `--text-primary`   | `#E6E8EE` |
-| `text-text-secondary` | `--text-secondary` | `#9CA3AF` |
-| `text-muted`          | `--muted`          | `#6B7280` |
+| `text-text-primary`   | `--text-primary`   | `#F5F5F7` |
+| `text-text-secondary` | `--text-secondary` | `#8E8E93` |
+| `text-muted`          | `--muted`          | `#636366` |
 
-### Border
+#### Border
 
 | Token                 | Variable         | Hex       |
 | --------------------- | ---------------- | --------- |
-| `border-border`       | `--border`       | `#2A2F3A` |
-| `border-border-hover` | `--border-hover` | `#3A4050` |
+| `border-border`       | `--border`       | `#38383A` |
+| `border-border-hover` | `--border-hover` | `#48484A` |
+
+---
+
+### Light Mode Palette
+
+Activated when `html` has class `light` (managed by `next-themes`).
+
+#### Backgrounds
+
+| Token           | Variable       | Hex       | Usage                    |
+| --------------- | -------------- | --------- | ------------------------ |
+| `bg-background` | `--background` | `#FFFFFF` | Page background          |
+| `bg-surface`    | `--surface`    | `#F2F2F7` | Sidebar, elevated panels |
+| `bg-card`       | `--card`       | `#FFFFFF` | Cards, dialogs           |
+
+#### Text
+
+| Token                 | Variable           | Hex       |
+| --------------------- | ------------------ | --------- |
+| `text-text-primary`   | `--text-primary`   | `#000000` |
+| `text-text-secondary` | `--text-secondary` | `#636366` |
+| `text-muted`          | `--muted`          | `#8E8E93` |
+
+#### Border
+
+| Token           | Variable   | Hex       |
+| --------------- | ---------- | --------- |
+| `border-border` | `--border` | `#D1D1D6` |
+
+---
+
+### Theme System
+
+Theme mode is powered by **`next-themes`**.
+
+```tsx
+// apps/web/src/components/providers.tsx
+<ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+```
+
+- The `attribute="class"` setting adds/removes the `light` class on `<html>` to switch between `:root` (dark) and `html.light {}` CSS variable blocks.
+- `defaultTheme="dark"` — the app always starts in dark mode; users can toggle.
+- `suppressHydrationWarning` is set on `<html>` in `layout.tsx` to prevent hydration mismatches.
+- The `ThemeToggle` button lives in `TopNav` (Sun icon = switch to light, Moon icon = switch to dark). It uses a `mounted` guard to avoid rendering on the server.
 
 ---
 
@@ -103,15 +149,15 @@ The app uses a **dashboard shell** layout:
 ┌──────────┬──────────────────────────────────┐
 │          │  TopNav (sticky, h-14)           │
 │  Sidebar │─────────────────────────────────│
-│  240px   │                                  │
+│  220px   │                                  │
 │  fixed   │  Main content                    │
 │          │  max-w-content (1440px)          │
 │          │  px-6 py-6                       │
 └──────────┴──────────────────────────────────┘
 ```
 
-- **Sidebar:** `w-sidebar` (240px), fixed left, full height, `bg-surface`.
-- **Top nav:** sticky, blur backdrop, `bg-surface/80`.
+- **Sidebar:** `w-sidebar` (220px), fixed left, full height.
+- **Top nav:** sticky, blur backdrop, uses `var(--nav-bg)` CSS variable (responds to theme).
 - **Content:** `pl-sidebar`, inner container `max-w-content` centered.
 
 Layout file: `app/(dashboard)/layout.tsx`
@@ -168,6 +214,15 @@ Defined in `globals.css` under `@layer components`:
 <span class="trend-down">↓ -1.1%</span>
 <span class="trend-neutral">– 0.0%</span>
 ```
+
+### Surface Hover
+
+```html
+<!-- Interactive surfaces (nav links, icon buttons) -->
+<button class="surface-hover">…</button>
+```
+
+`.surface-hover` provides a subtle background tint on hover that adapts to both dark and light themes (defined in `globals.css`).
 
 ---
 

@@ -8,15 +8,18 @@ public class PortfolioMetricsService : IPortfolioMetricsService
     private readonly ITransactionRepository _transactionRepository;
     private readonly IPortfolioRepository _portfolioRepository;
     private readonly IFifoEngine _fifoEngine;
+    private readonly IMarketPriceService _marketPriceService;
 
     public PortfolioMetricsService(
         ITransactionRepository transactionRepository,
         IPortfolioRepository portfolioRepository,
-        IFifoEngine fifoEngine)
+        IFifoEngine fifoEngine,
+        IMarketPriceService marketPriceService)
     {
         _transactionRepository = transactionRepository;
         _portfolioRepository = portfolioRepository;
         _fifoEngine = fifoEngine;
+        _marketPriceService = marketPriceService;
     }
 
     public async Task<PortfolioMetricsDto> GetMetricsAsync(
@@ -31,6 +34,16 @@ public class PortfolioMetricsService : IPortfolioMetricsService
 
         if (transactions.Count == 0)
             return new PortfolioMetricsDto();
+
+        if (currentPrices is null)
+        {
+            var symbols = transactions
+                .Select(t => t.Symbol)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            currentPrices = await _marketPriceService.GetPricesAsync(symbols);
+        }
 
         var holdings = _fifoEngine.CalculateHoldings(transactions, currentPrices);
         var realizedProfits = _fifoEngine.CalculateRealizedProfit(transactions);

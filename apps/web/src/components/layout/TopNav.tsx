@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useAuth } from "@/auth/auth-provider";
 import { useRouter } from "next/navigation";
+import ThemeToggle from "@/components/ui/theme-toggle";
 
 export default function TopNav() {
   const { user, logout } = useAuth();
@@ -20,8 +21,8 @@ export default function TopNav() {
     <header
       className="sticky top-0 z-20 flex h-[52px] items-center justify-between px-6 backdrop-blur-2xl"
       style={{
-        background: "rgba(0,0,0,0.82)",
-        borderBottom: "0.5px solid rgba(255,255,255,0.08)",
+        background: "var(--nav-bg)",
+        borderBottom: "0.5px solid var(--nav-border)",
       }}
     >
       {/* Search */}
@@ -31,13 +32,14 @@ export default function TopNav() {
           type="text"
           placeholder="Search stocks, portfolios…"
           className="h-9 w-64 rounded-[10px] pl-9 pr-3 text-[14px] text-text-primary placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-primary/40"
-          style={{ background: "rgba(255,255,255,0.07)" }}
+          style={{ background: "var(--input-fill)" }}
         />
       </div>
 
       {/* Right side */}
       <div className="flex items-center gap-3">
-        <button className="rounded-xl p-2 text-text-secondary transition-all duration-150 hover:bg-white/[0.07] hover:text-text-primary">
+        <ThemeToggle />
+        <button className="surface-hover rounded-xl p-2 text-text-secondary transition-all duration-150 hover:text-text-primary">
           <BellIcon className="h-[18px] w-[18px]" />
         </button>
         <div className="relative">
@@ -52,14 +54,16 @@ export default function TopNav() {
             <div
               className="absolute right-0 mt-2 w-48 overflow-hidden rounded-[14px] shadow-2xl backdrop-blur-2xl"
               style={{
-                background: "rgba(38,38,40,0.96)",
-                border: "0.5px solid rgba(255,255,255,0.12)",
+                background: "var(--dropdown-bg)",
+                border: "0.5px solid var(--dropdown-border)",
               }}
             >
               {user?.email && (
                 <div
                   className="px-4 py-3"
-                  style={{ borderBottom: "0.5px solid rgba(255,255,255,0.08)" }}
+                  style={{
+                    borderBottom: "0.5px solid var(--dropdown-divider)",
+                  }}
                 >
                   <p className="text-[11px] font-medium uppercase tracking-widest text-muted">
                     Account

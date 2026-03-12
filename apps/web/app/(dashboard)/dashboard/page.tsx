@@ -1,16 +1,73 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Plus } from "lucide-react";
+import { useQueries } from "@tanstack/react-query";
 import StatCard from "@/components/cards/StatCard";
 import PortfolioCard from "@/components/cards/PortfolioCard";
 import CreatePortfolioModal from "@/features/portfolios/CreatePortfolioModal";
 import { Button } from "@/components/ui/button";
 import { usePortfolios } from "@/hooks/use-portfolios";
+import { getMetrics, getHoldings } from "@/services/portfolio-service";
+
+function formatCurrency(value: number): string {
+  return value.toLocaleString("en-US", { style: "currency", currency: "USD" });
+}
+
+function toTrend(value: number): "up" | "down" | "neutral" {
+  if (value > 0) return "up";
+  if (value < 0) return "down";
+  return "neutral";
+}
 
 export default function DashboardPage() {
   const { data: portfolios, isLoading, error } = usePortfolios();
   const [createOpen, setCreateOpen] = useState(false);
+
+  const portfolioIds = useMemo(
+    () => portfolios?.map((p) => p.id) ?? [],
+    [portfolios],
+  );
+
+  const metricsResults = useQueries({
+    queries: portfolioIds.map((id) => ({
+      queryKey: ["portfolios", id, "metrics"],
+      queryFn: () => getMetrics(id),
+      staleTime: 30_000,
+      refetchInterval: 30_000,
+      enabled: portfolioIds.length > 0,
+    })),
+  });
+
+  const holdingsResults = useQueries({
+    queries: portfolioIds.map((id) => ({
+      queryKey: ["portfolios", id, "holdings"],
+      queryFn: () => getHoldings(id),
+      staleTime: 30_000,
+      enabled: portfolioIds.length > 0,
+    })),
+  });
+
+  const isStatsLoading =
+    isLoading ||
+    metricsResults.some((r) => r.isLoading) ||
+    holdingsResults.some((r) => r.isLoading);
+
+  const portfolioValue = metricsResults.reduce(
+    (sum, r) => sum + (r.data?.portfolioValue ?? 0),
+    0,
+  );
+  const totalProfit = metricsResults.reduce(
+    (sum, r) => sum + (r.data?.totalProfit ?? 0),
+    0,
+  );
+  const unrealizedProfit = metricsResults.reduce(
+    (sum, r) => sum + (r.data?.unrealizedProfit ?? 0),
+    0,
+  );
+  const holdingsCount = new Set(
+    holdingsResults.flatMap((r) => r.data?.map((h) => h.symbol) ?? []),
+  ).size;
 
   return (
     <div className="space-y-6">
@@ -23,10 +80,24 @@ export default function DashboardPage() {
       </div>
       {/* Stat cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard title="Portfolio Value" value="—" />
-        <StatCard title="Total Gain/Loss" value="—" />
-        <StatCard title="Today's Change" value="—" />
-        <StatCard title="Holdings" value="0" />
+        <StatCard
+          title="Portfolio Value"
+          value={isStatsLoading ? "—" : formatCurrency(portfolioValue)}
+        />
+        <StatCard
+          title="Total Gain/Loss"
+          value={isStatsLoading ? "—" : formatCurrency(totalProfit)}
+          trend={isStatsLoading ? "neutral" : toTrend(totalProfit)}
+        />
+        <StatCard
+          title="Unrealized P&L"
+          value={isStatsLoading ? "—" : formatCurrency(unrealizedProfit)}
+          trend={isStatsLoading ? "neutral" : toTrend(unrealizedProfit)}
+        />
+        <StatCard
+          title="Holdings"
+          value={isStatsLoading ? "—" : String(holdingsCount)}
+        />
       </div>
       {/* Portfolios */}
       <div>
@@ -39,9 +110,9 @@ export default function DashboardPage() {
         </div>
         {isLoading && (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 3 }).map((_, i) => (
+            {["sk-1", "sk-2", "sk-3"].map((k) => (
               <div
-                key={i}
+                key={k}
                 className="stoxly-card h-40 animate-pulse bg-surface"
               />
             ))}
@@ -52,7 +123,7 @@ export default function DashboardPage() {
             Failed to load portfolios. Please try again.
           </div>
         )}
-        {portfolios && portfolios.length === 0 && (
+        {portfolios?.length === 0 && (
           <div className="stoxly-card text-center">
             <p className="text-body text-text-secondary">
               You don&apos;t have any portfolios yet.

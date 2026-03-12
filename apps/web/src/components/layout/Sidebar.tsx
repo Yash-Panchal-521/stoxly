@@ -19,8 +19,8 @@ export default function Sidebar() {
     <aside
       className="fixed left-0 top-0 z-30 flex h-screen w-sidebar flex-col"
       style={{
-        background: "rgba(6,6,6,0.97)",
-        borderRight: "0.5px solid rgba(255,255,255,0.08)",
+        background: "var(--sidebar-bg)",
+        borderRight: "0.5px solid var(--sidebar-border)",
       }}
     >
       {/* Brand */}
@@ -38,7 +38,7 @@ export default function Sidebar() {
 
       <div
         className="mx-3 h-px"
-        style={{ background: "rgba(255,255,255,0.07)" }}
+        style={{ background: "var(--sidebar-divider)" }}
       />
 
       {/* Navigation */}
@@ -54,7 +54,7 @@ export default function Sidebar() {
                 "flex items-center gap-2.5 rounded-[10px] px-3 py-2 text-[14px] font-medium transition-all duration-150",
                 isActive
                   ? "bg-primary/[0.12] text-primary"
-                  : "text-text-secondary hover:bg-white/[0.05] hover:text-text-primary",
+                  : "surface-hover text-text-secondary hover:text-text-primary",
               )}
             >
               <item.icon
@@ -71,14 +71,14 @@ export default function Sidebar() {
 
       <div
         className="mx-3 h-px"
-        style={{ background: "rgba(255,255,255,0.07)" }}
+        style={{ background: "var(--sidebar-divider)" }}
       />
 
       {/* Footer */}
       <div className="px-2 py-3">
         <Link
           href="/settings"
-          className="flex items-center gap-2.5 rounded-[10px] px-3 py-2 text-[14px] font-medium text-text-secondary transition-all duration-150 hover:bg-white/[0.05] hover:text-text-primary"
+          className="surface-hover flex items-center gap-2.5 rounded-[10px] px-3 py-2 text-[14px] font-medium text-text-secondary transition-all duration-150 hover:text-text-primary"
         >
           <SettingsIcon className="h-[17px] w-[17px] shrink-0" />
           Settings

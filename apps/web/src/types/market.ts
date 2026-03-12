@@ -9,3 +9,11 @@ export interface HistoricalPrice {
   date: string;
   price: number;
 }
+
+export interface PriceUpdateDto {
+  symbol: string;
+  price: number;
+  change: number;
+  changePercent: number;
+  updatedAt: string;
+}

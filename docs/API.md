@@ -110,7 +110,7 @@ Response `200 OK`
 
 ## Update Portfolio
 
-PUT `/api/portfolios/{portfolioId}`
+PATCH `/api/portfolios/{portfolioId}`
 
 Request
 
@@ -138,7 +138,7 @@ GET `/api/portfolios/{portfolioId}/holdings`
 
 Requires a valid Firebase ID token.
 
-Holdings are calculated on-the-fly from transaction history using FIFO cost basis.
+Holdings are calculated on-the-fly from transaction history using FIFO cost basis. Current prices are resolved via `IMarketPriceService` (Redis-first, Finnhub fallback) and included in every response.
 
 Response `200 OK`
 
@@ -149,9 +149,34 @@ Response `200 OK`
     "quantity": 10,
     "averagePrice": 150.0,
     "totalInvested": 1500.0,
-    "realizedProfit": 0.0
+    "realizedProfit": 0.0,
+    "currentPrice": 211.45,
+    "value": 2114.5,
+    "unrealizedProfit": 614.5
   }
 ]
+```
+
+---
+
+## Get Portfolio Metrics
+
+GET `/api/portfolios/{portfolioId}/metrics`
+
+Requires a valid Firebase ID token.
+
+Returns aggregated metrics for a portfolio. Current prices are resolved via `IMarketPriceService` (Redis-first, Finnhub fallback) at request time.
+
+Response `200 OK`
+
+```json
+{
+  "portfolioValue": 21145.0,
+  "totalInvested": 15000.0,
+  "realizedProfit": 350.0,
+  "unrealizedProfit": 6145.0,
+  "totalProfit": 6495.0
+}
 ```
 
 ---

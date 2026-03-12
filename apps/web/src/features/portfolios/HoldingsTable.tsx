@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { useHoldings } from "@/hooks/use-holdings";
 import {
   Table,
@@ -9,10 +10,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 import type { HoldingDto } from "@/types/portfolio";
 
 interface HoldingsTableProps {
   portfolioId: string;
+  /** Live price overrides from SignalR. Keyed by uppercase symbol. */
+  priceOverrides?: Record<string, { price: number }>;
 }
 
 function formatCurrency(value: number | null, fallback = "—"): string {
@@ -61,15 +65,52 @@ function HoldingsTableSkeleton() {
   );
 }
 
-function computeValue(holding: HoldingDto): number | null {
-  if (holding.currentPrice === null) return null;
-  return holding.currentPrice * holding.quantity;
+function computeValue(
+  holding: HoldingDto,
+  overridePrice?: number,
+): number | null {
+  const price = overridePrice ?? holding.currentPrice;
+  if (price === null || price === undefined) return null;
+  return price * holding.quantity;
+}
+
+function computeUnrealizedProfit(
+  holding: HoldingDto,
+  overridePrice?: number,
+): number | null {
+  const price = overridePrice ?? holding.currentPrice;
+  if (price === null || price === undefined) return null;
+  return (price - holding.averagePrice) * holding.quantity;
 }
 
 export default function HoldingsTable({
   portfolioId,
+  priceOverrides,
 }: Readonly<HoldingsTableProps>) {
   const { data: holdings, isLoading, isError } = useHoldings(portfolioId);
+
+  // Flash animation — track which rows just had a price tick
+  const prevPricesRef = useRef<Record<string, number>>({});
+  const [flashMap, setFlashMap] = useState<Record<string, "up" | "down">>({});
+
+  useEffect(() => {
+    if (!priceOverrides) return;
+
+    const flashes: Record<string, "up" | "down"> = {};
+    for (const [symbol, override] of Object.entries(priceOverrides)) {
+      const prev = prevPricesRef.current[symbol];
+      if (prev !== undefined && prev !== override.price) {
+        flashes[symbol] = override.price > prev ? "up" : "down";
+      }
+      prevPricesRef.current[symbol] = override.price;
+    }
+
+    if (Object.keys(flashes).length > 0) {
+      setFlashMap(flashes);
+      const timer = setTimeout(() => setFlashMap({}), 700);
+      return () => clearTimeout(timer);
+    }
+  }, [priceOverrides]);
 
   return (
     <div className="stoxly-card space-y-4">
@@ -102,14 +143,28 @@ export default function HoldingsTable({
           </TableHeader>
           <TableBody>
             {holdings.map((holding) => {
-              const value = computeValue(holding);
+              const overridePrice = priceOverrides?.[holding.symbol]?.price;
+              const effectivePrice = overridePrice ?? holding.currentPrice;
+              const value = computeValue(holding, overridePrice);
+              const unrealized = computeUnrealizedProfit(
+                holding,
+                overridePrice,
+              );
               const totalPnl =
-                holding.unrealizedProfit === null
+                unrealized === null
                   ? null
-                  : holding.unrealizedProfit + holding.realizedProfit;
+                  : unrealized + holding.realizedProfit;
+              const flash = flashMap[holding.symbol];
 
               return (
-                <TableRow key={holding.symbol}>
+                <TableRow
+                  key={holding.symbol}
+                  className={cn(
+                    "transition-colors duration-700",
+                    flash === "up" && "bg-success/10",
+                    flash === "down" && "bg-danger/10",
+                  )}
+                >
                   <TableCell className="font-semibold text-text-primary">
                     {holding.symbol}
                   </TableCell>
@@ -120,7 +175,7 @@ export default function HoldingsTable({
                     {formatCurrency(holding.averagePrice)}
                   </TableCell>
                   <TableCell className="text-right text-text-secondary">
-                    {formatCurrency(holding.currentPrice)}
+                    {formatCurrency(effectivePrice)}
                   </TableCell>
                   <TableCell className="text-right text-text-secondary">
                     {formatCurrency(holding.invested)}
@@ -128,7 +183,7 @@ export default function HoldingsTable({
                   <TableCell className="text-right text-text-secondary">
                     {formatCurrency(value)}
                   </TableCell>
-                  <ProfitCell value={totalPnl} />{" "}
+                  <ProfitCell value={totalPnl} />
                 </TableRow>
               );
             })}

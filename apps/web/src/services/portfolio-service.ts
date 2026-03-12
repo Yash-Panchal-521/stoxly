@@ -3,6 +3,7 @@ import type {
   CreatePortfolioRequest,
   HoldingDto,
   PerformanceDataPoint,
+  PortfolioMetricsDto,
   PortfolioResponse,
   UpdatePortfolioRequest,
 } from "@/types/portfolio";
@@ -44,4 +45,10 @@ export async function getPerformance(
   return apiGet<PerformanceDataPoint[]>(
     `${BASE_PATH}/${portfolioId}/performance`,
   );
+}
+
+export async function getMetrics(
+  portfolioId: string,
+): Promise<PortfolioMetricsDto> {
+  return apiGet<PortfolioMetricsDto>(`${BASE_PATH}/${portfolioId}/metrics`);
 }

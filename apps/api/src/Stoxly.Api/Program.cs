@@ -32,7 +32,7 @@ builder.Services.AddSingleton<IFifoEngine, FifoEngine>();
 builder.Services.AddScoped<IHoldingsService, HoldingsService>();
 builder.Services.AddScoped<IPortfolioMetricsService, PortfolioMetricsService>();
 builder.Services.AddScoped<IPortfolioPerformanceService, PortfolioPerformanceService>();
-builder.Services.AddScoped<IMarketPriceService, StubMarketPriceService>();
+builder.Services.AddScoped<IMarketPriceService, LiveMarketPriceService>();
 
 // ── MarketData module ─────────────────────────────────────────────────────────
 builder.Services.Configure<FinnhubOptions>(
@@ -105,4 +105,4 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapHub<PriceHub>("/hubs/prices");
 
-app.Run();
+await app.RunAsync();

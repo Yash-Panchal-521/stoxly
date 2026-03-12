@@ -80,7 +80,7 @@ Example:
 
 ```
 NEXT_PUBLIC_API_URL=http://localhost:5000
-NEXT_PUBLIC_SIGNALR_URL=http://localhost:5000/hubs/market
+NEXT_PUBLIC_SIGNALR_URL=http://localhost:5000/hubs
 ```
 
 ---
@@ -157,7 +157,7 @@ Environment variables:
 
 ```
 NEXT_PUBLIC_API_URL=https://api.stoxly.com
-NEXT_PUBLIC_SIGNALR_URL=https://api.stoxly.com/hubs/market
+NEXT_PUBLIC_SIGNALR_URL=https://api.stoxly.com/hubs
 ```
 
 ---

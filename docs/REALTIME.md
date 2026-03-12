@@ -10,7 +10,7 @@ Stoxly provides real-time stock price updates using **SignalR**. The backend pus
 
 - **ASP.NET Core SignalR** (built-in, no extra NuGet package)
 - **WebSocket transport**
-- **`@microsoft/signalr`** client on the Next.js frontend (planned)
+- **`@microsoft/signalr`** client on the Next.js frontend
 
 ---
 
@@ -85,34 +85,75 @@ PriceUpdateWorker ticks (every 30 s)
 
 ---
 
-# Frontend Integration (planned)
+# Frontend Integration
 
-Install: `npm install @microsoft/signalr`
+The SignalR client is fully implemented in the Next.js frontend.
 
-Connection setup (example):
+## Connection factory
+
+File: `apps/web/src/lib/signalr.ts`
 
 ```ts
-import * as signalR from "@microsoft/signalr";
+import { HubConnectionBuilder, LogLevel } from "@microsoft/signalr";
+import { auth } from "@/lib/firebase";
 
-const connection = new signalR.HubConnectionBuilder()
-  .withUrl("/hubs/prices", {
-    accessTokenFactory: () => firebaseUser.getIdToken(),
-  })
-  .withAutomaticReconnect()
-  .build();
+export function createPriceHubConnection() {
+  const baseUrl =
+    process.env.NEXT_PUBLIC_SIGNALR_URL ?? "http://localhost:5000/hubs";
 
-await connection.start();
-
-// Subscribe to a symbol
-await connection.invoke("SubscribeToSymbol", "AAPL");
-
-// Handle incoming updates
-connection.on("PriceUpdated", (update: PriceUpdateDto) => {
-  // update React state / TanStack Query cache
-});
+  return new HubConnectionBuilder()
+    .withUrl(`${baseUrl}/prices`, {
+      accessTokenFactory: async () => {
+        const token = await auth.currentUser?.getIdToken();
+        return token ?? "";
+      },
+    })
+    .withAutomaticReconnect()
+    .configureLogging(LogLevel.Warning)
+    .build();
+}
 ```
 
-On unmount / when holdings change, call `UnsubscribeFromSymbol` to leave stale groups.
+## usePriceSocket hook
+
+File: `apps/web/src/hooks/use-price-socket.ts`
+
+```ts
+export function usePriceSocket(
+  symbols: string[],
+): Record<string, PriceUpdateDto>;
+```
+
+- Accepts an array of tickers (e.g. the symbols in the active portfolio).
+- On mount: creates a connection, starts it, calls `SubscribeToSymbol` for each symbol.
+- On unmount: calls `connection.stop()` and clears the ref.
+- Symbols array is sorted and joined into a stable key — reconnection only fires when the set of symbols actually changes, not on every render.
+- Returns a `Record<string, PriceUpdateDto>` map that is updated in real time as `PriceUpdated` events arrive.
+
+## PriceUpdateDto (TypeScript)
+
+```ts
+interface PriceUpdateDto {
+  symbol: string;
+  price: number;
+  change: number;
+  changePercent: number;
+  updatedAt: string; // ISO 8601
+}
+```
+
+## Integration in pages
+
+The `priceOverrides` prop on `HoldingsTable` accepts `Record<string, PriceUpdateDto>`. Pages wire it like:
+
+```tsx
+const priceOverrides = usePriceSocket(symbols);
+<HoldingsTable holdings={holdings} priceOverrides={priceOverrides} />;
+```
+
+When an override arrives for a row, the row's `currentPrice`, `value`, and `unrealizedProfit` columns update immediately and flash briefly to draw attention.
+
+The portfolio detail page also calls `useMetrics(portfolioId)` (a TanStack Query hook backed by `GET /api/portfolios/{id}/metrics`, 30 s stale time) to show live aggregate metrics.
 
 ---
 
@@ -153,7 +194,6 @@ Neither is needed for single-instance deployments.
 
 # Future Improvements
 
-- Portfolio value recalculation broadcast (`PortfolioUpdated` event) once live prices power `PortfolioMetricsService`.
 - Watchlist price updates once the watchlists feature is implemented.
 - Event throttling or diff-only broadcasting for high-frequency market hours.
 - WebSocket compression for connections with many subscribed symbols.

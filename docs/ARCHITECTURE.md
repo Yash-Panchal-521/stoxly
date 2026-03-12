@@ -111,20 +111,40 @@ Key technologies:
 - TanStack Query
 - SignalR client (`@microsoft/signalr`)
 - Firebase SDK
+- next-themes (light/dark theme system)
 
 Folder structure under `apps/web/src/`:
 
 ```
 auth/           → Firebase auth guard and context provider
 components/     → shared UI components (layout, cards, shadcn wrappers)
+  ui/           → includes ThemeToggle, shadcn wrappers
+  layout/       → TopNav, Sidebar
+  cards/        → StatCard and other card components
 features/
   market/       → StockSearch combobox component
   portfolios/   → portfolio list and detail components
   transactions/ → AddTransactionDialog and transaction table
-hooks/          → TanStack Query hooks (use-holdings, use-portfolios, use-transactions)
-lib/            → api-client, firebase init, utils
+hooks/          → TanStack Query hooks + SignalR hooks
+  use-holdings.ts
+  use-portfolios.ts
+  use-portfolio.ts
+  use-transactions.ts
+  use-performance.ts
+  use-price-socket.ts  → SignalR subscription hook (live price overrides)
+  use-metrics.ts       → TanStack Query hook for /metrics endpoint
+lib/            → api-client, firebase init, utils, signalr.ts
 services/       → API wrappers (portfolio-service, transaction-service, market-service)
 types/          → TypeScript types (portfolio, transaction, market)
+```
+
+Provider chain (wraps the entire app):
+
+```
+ThemeProvider (next-themes, attribute="class", defaultTheme="dark")
+  → AuthProvider (Firebase auth context)
+    → QueryClientProvider (TanStack Query v5)
+      → ToastProvider
 ```
 
 Data Flow:
@@ -148,7 +168,14 @@ Backend folder structure under `apps/api/src/Stoxly.Api/`:
 
 ```
 Controllers/          → thin HTTP handlers
-Services/             → business logic (portfolio, transactions, holdings, metrics)
+Services/             → business logic
+  PortfolioService
+  HoldingsService        (enriches holdings with live prices via IMarketPriceService)
+  TransactionService
+  PortfolioMetricsService (computes metrics with live prices via IMarketPriceService)
+  IMarketPriceService    (abstraction over real-time price lookup)
+  LiveMarketPriceService (production impl — delegates to IMarketDataService)
+  StubMarketPriceService (fallback / test impl — returns empty price set)
 Repositories/         → EF Core data access
 Models/               → EF Core entity classes
 DTOs/                 → request/response shapes
@@ -175,6 +202,7 @@ Layer responsibilities:
 - **Hubs** — SignalR hub for real-time price broadcasting.
 - **BackgroundServices** — hosted services that run on a timer inside the API process.
 - **MarketData** — self-contained module for external market data. Depends on nothing outside itself except DI-registered services.
+- **IMarketPriceService / LiveMarketPriceService** — thin bridge that lets `HoldingsService` and `PortfolioMetricsService` resolve current prices without taking a direct dependency on the full `MarketData` module.
 
 Authentication rules:
 
@@ -264,6 +292,23 @@ Server-to-client event:
 4. Broadcasts `PriceUpdated` to per-symbol SignalR groups.
 
 Watchlist symbols will be merged into the collection once that feature is implemented.
+
+## Frontend Integration
+
+File: `apps/web/src/lib/signalr.ts` — `createPriceHubConnection()` factory.
+
+- URL: `${NEXT_PUBLIC_SIGNALR_URL}/prices` (env var defaults to `http://localhost:5000/hubs`)
+- Auth token from `auth.currentUser?.getIdToken()` injected via `accessTokenFactory`
+- `withAutomaticReconnect()` enabled
+
+File: `apps/web/src/hooks/use-price-socket.ts` — `usePriceSocket(symbols: string[])` hook.
+
+- Manages SignalR connection lifecycle (connect on mount, disconnect on unmount)
+- Subscribes to each symbol group on connect
+- Returns `Record<string, PriceUpdateDto>` — a live price-override map
+- Symbols array is sorted before diffing to avoid unnecessary reconnections
+
+The hook is consumed by the portfolio detail page and the dashboard to overlay live prices onto the `HoldingsTable` component via the `priceOverrides` prop.
 
 ---
 

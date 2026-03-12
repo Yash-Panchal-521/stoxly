@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/auth/auth-provider";
 import { ToastProvider } from "@/hooks/use-toast";
 
@@ -20,9 +21,11 @@ export function Providers({ children }: Readonly<{ children: ReactNode }>) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <ToastProvider>{children}</ToastProvider>
-      </AuthProvider>
+      <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+        <AuthProvider>
+          <ToastProvider>{children}</ToastProvider>
+        </AuthProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

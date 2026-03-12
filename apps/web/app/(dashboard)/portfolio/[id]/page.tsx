@@ -1,13 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { usePortfolio } from "@/hooks/use-portfolio";
+import { useHoldings } from "@/hooks/use-holdings";
+import { useMetrics } from "@/hooks/use-metrics";
+import { usePriceSocket } from "@/hooks/use-price-socket";
 import { Button } from "@/components/ui/button";
+import StatCard from "@/components/cards/StatCard";
 import DeletePortfolioDialog from "@/features/portfolios/DeletePortfolioDialog";
 import HoldingsTable from "@/features/portfolios/HoldingsTable";
 import PerformanceChart from "@/features/portfolios/PerformanceChart";
 import TransactionList from "@/features/transactions/TransactionList";
+
+function formatCurrency(value: number): string {
+  return value.toLocaleString("en-US", { style: "currency", currency: "USD" });
+}
 
 function formatDate(dateString: string): string {
   return new Date(dateString).toLocaleDateString("en-US", {
@@ -21,6 +29,16 @@ export default function PortfolioDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const { data: portfolio, isLoading, isError } = usePortfolio(params.id);
+  const { data: holdings } = useHoldings(params.id);
+  const { data: metrics } = useMetrics(params.id);
+  const symbols = useMemo(
+    () =>
+      [...new Set((holdings ?? []).map((h) => h.symbol))].sort((a, b) =>
+        a.localeCompare(b),
+      ),
+    [holdings],
+  );
+  const prices = usePriceSocket(symbols);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   if (isLoading) {
@@ -89,6 +107,30 @@ export default function PortfolioDetailPage() {
         </p>
       </div>
 
+      {/* Metrics Strip */}
+      {metrics && (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <StatCard
+            title="Portfolio Value"
+            value={formatCurrency(metrics.portfolioValue)}
+          />
+          <StatCard
+            title="Total Invested"
+            value={formatCurrency(metrics.totalInvested)}
+          />
+          <StatCard
+            title="Unrealized P&L"
+            value={formatCurrency(metrics.unrealizedProfit)}
+            trend={metrics.unrealizedProfit >= 0 ? "up" : "down"}
+          />
+          <StatCard
+            title="Total Return"
+            value={formatCurrency(metrics.totalProfit)}
+            trend={metrics.totalProfit >= 0 ? "up" : "down"}
+          />
+        </div>
+      )}
+
       {/* Performance Chart */}
       <PerformanceChart portfolioId={portfolio.id} />
 
@@ -96,7 +138,7 @@ export default function PortfolioDetailPage() {
       <TransactionList portfolioId={portfolio.id} />
 
       {/* Holdings */}
-      <HoldingsTable portfolioId={portfolio.id} />
+      <HoldingsTable portfolioId={portfolio.id} priceOverrides={prices} />
       <DeletePortfolioDialog
         portfolioId={portfolio.id}
         portfolioName={portfolio.name}

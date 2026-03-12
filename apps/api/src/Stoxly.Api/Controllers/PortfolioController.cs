@@ -14,15 +14,18 @@ public class PortfolioController : ControllerBase
     private readonly IPortfolioService _portfolioService;
     private readonly IHoldingsService _holdingsService;
     private readonly IPortfolioPerformanceService _performanceService;
+    private readonly IPortfolioMetricsService _metricsService;
 
     public PortfolioController(
         IPortfolioService portfolioService,
         IHoldingsService holdingsService,
-        IPortfolioPerformanceService performanceService)
+        IPortfolioPerformanceService performanceService,
+        IPortfolioMetricsService metricsService)
     {
         _portfolioService = portfolioService;
         _holdingsService = holdingsService;
         _performanceService = performanceService;
+        _metricsService = metricsService;
     }
 
     [HttpPost]
@@ -71,6 +74,25 @@ public class PortfolioController : ControllerBase
         var userId = GetUserId();
         var holdings = await _holdingsService.GetHoldingsAsync(portfolioId, userId);
         return Ok(holdings);
+    }
+
+    /// <summary>
+    /// Returns live portfolio metrics: total value, invested capital, realized and unrealized profit.
+    /// Prices are fetched from Redis (60 s TTL) with a Finnhub fallback.
+    /// </summary>
+    [HttpGet("{portfolioId:guid}/metrics")]
+    public async Task<IActionResult> GetMetrics(Guid portfolioId)
+    {
+        var userId = GetUserId();
+        try
+        {
+            var metrics = await _metricsService.GetMetricsAsync(portfolioId, userId);
+            return Ok(metrics);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
     }
 
     /// <summary>

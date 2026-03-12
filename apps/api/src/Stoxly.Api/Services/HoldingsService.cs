@@ -8,15 +8,18 @@ public class HoldingsService : IHoldingsService
     private readonly ITransactionRepository _transactionRepository;
     private readonly IPortfolioRepository _portfolioRepository;
     private readonly IFifoEngine _fifoEngine;
+    private readonly IMarketPriceService _marketPriceService;
 
     public HoldingsService(
         ITransactionRepository transactionRepository,
         IPortfolioRepository portfolioRepository,
-        IFifoEngine fifoEngine)
+        IFifoEngine fifoEngine,
+        IMarketPriceService marketPriceService)
     {
         _transactionRepository = transactionRepository;
         _portfolioRepository = portfolioRepository;
         _fifoEngine = fifoEngine;
+        _marketPriceService = marketPriceService;
     }
 
     public async Task<IReadOnlyList<HoldingDto>> GetHoldingsAsync(Guid portfolioId, string userId)
@@ -29,6 +32,13 @@ public class HoldingsService : IHoldingsService
         if (transactions.Count == 0)
             return [];
 
-        return _fifoEngine.CalculateHoldings(transactions);
+        var symbols = transactions
+            .Select(t => t.Symbol)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var prices = await _marketPriceService.GetPricesAsync(symbols);
+
+        return _fifoEngine.CalculateHoldings(transactions, prices);
     }
 }
