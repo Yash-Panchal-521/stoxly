@@ -18,6 +18,10 @@ builder.Services.AddScoped<IPortfolioRepository, PortfolioRepository>();
 builder.Services.AddScoped<IPortfolioService, PortfolioService>();
 builder.Services.AddScoped<ITransactionRepository, TransactionRepository>();
 builder.Services.AddScoped<ITransactionService, TransactionService>();
+builder.Services.AddSingleton<IFifoEngine, FifoEngine>();
+builder.Services.AddScoped<IHoldingsService, HoldingsService>();
+builder.Services.AddScoped<IPortfolioMetricsService, PortfolioMetricsService>();
+builder.Services.AddScoped<IMarketPriceService, StubMarketPriceService>();
 
 builder.Services.AddControllers()
     .AddJsonOptions(opts =>

@@ -31,3 +31,29 @@ public class PortfolioResponse
     public string BaseCurrency { get; set; } = "USD";
     public DateTime CreatedAt { get; set; }
 }
+
+public class HoldingDto
+{
+    public string Symbol { get; set; } = string.Empty;
+    public decimal Quantity { get; set; }
+    public decimal AveragePrice { get; set; }
+    public decimal Invested { get; set; }
+    public decimal RealizedProfit { get; set; }
+    public decimal? CurrentPrice { get; set; }
+    public decimal? UnrealizedProfit { get; set; }
+}
+
+public class RealizedProfitDto
+{
+    public string Symbol { get; set; } = string.Empty;
+    public decimal RealizedProfit { get; set; }
+}
+
+public class PortfolioMetricsDto
+{
+    public decimal PortfolioValue { get; set; }
+    public decimal TotalInvested { get; set; }
+    public decimal RealizedProfit { get; set; }
+    public decimal UnrealizedProfit { get; set; }
+    public decimal TotalProfit { get; set; }
+}

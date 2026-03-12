@@ -16,3 +16,21 @@ export interface UpdatePortfolioRequest {
   name: string;
   description?: string;
 }
+
+export interface HoldingDto {
+  symbol: string;
+  quantity: number;
+  averagePrice: number;
+  invested: number;
+  realizedProfit: number;
+  currentPrice: number | null;
+  unrealizedProfit: number | null;
+}
+
+export interface PortfolioMetricsDto {
+  portfolioValue: number;
+  totalInvested: number;
+  realizedProfit: number;
+  unrealizedProfit: number;
+  totalProfit: number;
+}

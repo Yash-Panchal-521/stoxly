@@ -17,7 +17,7 @@ public class CreateTransactionRequest
     public decimal Quantity { get; set; }
 
     [Required]
-    [Range(0, double.MaxValue, ErrorMessage = "Price cannot be negative.")]
+    [Range(0.00000001, double.MaxValue, ErrorMessage = "Price must be greater than zero.")]
     public decimal Price { get; set; }
 
     [Range(0, double.MaxValue, ErrorMessage = "Fee cannot be negative.")]
@@ -35,26 +35,8 @@ public class UpdateTransactionRequest
     [Required]
     public Guid PortfolioId { get; set; }
 
-    [Required]
-    [MaxLength(20)]
-    public string Symbol { get; set; } = string.Empty;
-
-    [Required]
-    public TransactionType Type { get; set; }
-
-    [Required]
-    [Range(0.00000001, double.MaxValue, ErrorMessage = "Quantity must be greater than zero.")]
-    public decimal Quantity { get; set; }
-
-    [Required]
-    [Range(0, double.MaxValue, ErrorMessage = "Price cannot be negative.")]
-    public decimal Price { get; set; }
-
     [Range(0, double.MaxValue, ErrorMessage = "Fee cannot be negative.")]
     public decimal Fee { get; set; }
-
-    [Required]
-    public DateTime TradeDate { get; set; }
 
     [MaxLength(500)]
     public string? Notes { get; set; }

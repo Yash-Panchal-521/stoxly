@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useTransactions, useDeleteTransaction } from "@/hooks/use-transactions";
+import {
+  useTransactions,
+  useDeleteTransaction,
+} from "@/hooks/use-transactions";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,10 +19,13 @@ import AddTransactionDialog from "./AddTransactionDialog";
 import type { TransactionResponse } from "@/types/transaction";
 
 function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString("en-US", {
+  return new Date(dateString).toLocaleString("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
   });
 }
 
@@ -42,7 +48,10 @@ interface TransactionRowProps {
   portfolioId: string;
 }
 
-function TransactionTableRow({ transaction, portfolioId }: TransactionRowProps) {
+function TransactionTableRow({
+  transaction,
+  portfolioId,
+}: TransactionRowProps) {
   const { toast } = useToast();
   const { mutate: del, isPending } = useDeleteTransaction(portfolioId);
 
@@ -100,7 +109,11 @@ interface TransactionListProps {
 }
 
 export default function TransactionList({ portfolioId }: TransactionListProps) {
-  const { data: transactions, isLoading, isError } = useTransactions(portfolioId);
+  const {
+    data: transactions,
+    isLoading,
+    isError,
+  } = useTransactions(portfolioId);
   const [addOpen, setAddOpen] = useState(false);
 
   return (

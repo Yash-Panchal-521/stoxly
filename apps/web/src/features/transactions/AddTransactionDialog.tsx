@@ -5,7 +5,10 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { Button } from "@/components/ui/button";
 import { useCreateTransaction } from "@/hooks/use-transactions";
 import { useToast } from "@/hooks/use-toast";
-import type { CreateTransactionRequest, TransactionType } from "@/types/transaction";
+import type {
+  CreateTransactionRequest,
+  TransactionType,
+} from "@/types/transaction";
 
 interface AddTransactionDialogProps {
   portfolioId: string;
@@ -13,12 +16,25 @@ interface AddTransactionDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
+// datetime-local inputs work in LOCAL time, not UTC.
+// Subtract the timezone offset to get the local wall-clock time in ISO format.
+function nowLocalISO(): string {
+  const now = new Date();
+  return new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+    .toISOString()
+    .slice(0, 16);
 }
 
 function defaultForm(): CreateTransactionRequest {
-  return { symbol: "", type: "BUY", quantity: 0, price: 0, fee: 0, tradeDate: todayISO(), notes: "" };
+  return {
+    symbol: "",
+    type: "BUY",
+    quantity: 0,
+    price: 0,
+    fee: 0,
+    tradeDate: nowLocalISO(),
+    notes: "",
+  };
 }
 
 export default function AddTransactionDialog({
@@ -30,14 +46,24 @@ export default function AddTransactionDialog({
   const [form, setForm] = useState<CreateTransactionRequest>(defaultForm);
   const { mutate: create, isPending } = useCreateTransaction(portfolioId);
 
-  function set<K extends keyof CreateTransactionRequest>(key: K, value: CreateTransactionRequest[K]) {
+  function set<K extends keyof CreateTransactionRequest>(
+    key: K,
+    value: CreateTransactionRequest[K],
+  ) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    // form.tradeDate is a local-time string (from datetime-local input).
+    // new Date(localString) parses it as local time; .toISOString() gives UTC.
+    const tradeDateUtc = new Date(form.tradeDate).toISOString();
     create(
-      { ...form, symbol: form.symbol.trim().toUpperCase() },
+      {
+        ...form,
+        symbol: form.symbol.trim().toUpperCase(),
+        tradeDate: tradeDateUtc,
+      },
       {
         onSuccess: () => {
           toast("Transaction added", "success");
@@ -59,7 +85,9 @@ export default function AddTransactionDialog({
           <Dialog.Title className="text-h3 mb-4">Add Transaction</Dialog.Title>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="text-small text-text-secondary mb-1 block">Symbol</label>
+              <label className="text-small text-text-secondary mb-1 block">
+                Symbol
+              </label>
               <input
                 className="stoxly-input w-full"
                 placeholder="e.g. AAPL"
@@ -72,23 +100,30 @@ export default function AddTransactionDialog({
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-small text-text-secondary mb-1 block">Type</label>
+                <label className="text-small text-text-secondary mb-1 block">
+                  Type
+                </label>
                 <select
                   className="stoxly-input w-full"
                   value={form.type}
-                  onChange={(e) => set("type", e.target.value as TransactionType)}
+                  onChange={(e) =>
+                    set("type", e.target.value as TransactionType)
+                  }
                 >
                   <option value="BUY">BUY</option>
                   <option value="SELL">SELL</option>
                 </select>
               </div>
               <div>
-                <label className="text-small text-text-secondary mb-1 block">Trade Date</label>
+                <label className="text-small text-text-secondary mb-1 block">
+                  Trade Date &amp; Time
+                </label>
                 <input
-                  type="date"
+                  type="datetime-local"
                   className="stoxly-input w-full"
                   value={form.tradeDate}
                   onChange={(e) => set("tradeDate", e.target.value)}
+                  max={nowLocalISO()}
                   required
                 />
               </div>
@@ -96,26 +131,34 @@ export default function AddTransactionDialog({
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-small text-text-secondary mb-1 block">Quantity</label>
+                <label className="text-small text-text-secondary mb-1 block">
+                  Quantity
+                </label>
                 <input
                   type="number"
                   className="stoxly-input w-full"
                   placeholder="0"
                   value={form.quantity || ""}
-                  onChange={(e) => set("quantity", parseFloat(e.target.value) || 0)}
+                  onChange={(e) =>
+                    set("quantity", parseFloat(e.target.value) || 0)
+                  }
                   min="0.00000001"
                   step="any"
                   required
                 />
               </div>
               <div>
-                <label className="text-small text-text-secondary mb-1 block">Price</label>
+                <label className="text-small text-text-secondary mb-1 block">
+                  Price
+                </label>
                 <input
                   type="number"
                   className="stoxly-input w-full"
                   placeholder="0.00"
                   value={form.price || ""}
-                  onChange={(e) => set("price", parseFloat(e.target.value) || 0)}
+                  onChange={(e) =>
+                    set("price", parseFloat(e.target.value) || 0)
+                  }
                   min="0"
                   step="any"
                   required
@@ -124,7 +167,9 @@ export default function AddTransactionDialog({
             </div>
 
             <div>
-              <label className="text-small text-text-secondary mb-1 block">Fee (optional)</label>
+              <label className="text-small text-text-secondary mb-1 block">
+                Fee (optional)
+              </label>
               <input
                 type="number"
                 className="stoxly-input w-full"
@@ -137,7 +182,9 @@ export default function AddTransactionDialog({
             </div>
 
             <div>
-              <label className="text-small text-text-secondary mb-1 block">Notes (optional)</label>
+              <label className="text-small text-text-secondary mb-1 block">
+                Notes (optional)
+              </label>
               <textarea
                 className="stoxly-input w-full resize-none"
                 rows={2}
@@ -149,7 +196,12 @@ export default function AddTransactionDialog({
             </div>
 
             <div className="flex justify-end gap-3 pt-2">
-              <Button type="button" variant="secondary" onClick={() => onOpenChange(false)} disabled={isPending}>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => onOpenChange(false)}
+                disabled={isPending}
+              >
                 Cancel
               </Button>
               <Button type="submit" disabled={isPending}>

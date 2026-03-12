@@ -1,6 +1,7 @@
 import { apiGet, apiPost, apiPatch, apiDelete } from "@/lib/api-client";
 import type {
   CreatePortfolioRequest,
+  HoldingDto,
   PortfolioResponse,
   UpdatePortfolioRequest,
 } from "@/types/portfolio";
@@ -30,4 +31,8 @@ export async function updatePortfolio(
 
 export async function deletePortfolio(id: string): Promise<void> {
   return apiDelete(`${BASE_PATH}/${id}`);
+}
+
+export async function getHoldings(portfolioId: string): Promise<HoldingDto[]> {
+  return apiGet<HoldingDto[]>(`${BASE_PATH}/${portfolioId}/holdings`);
 }

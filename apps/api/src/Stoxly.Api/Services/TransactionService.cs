@@ -8,19 +8,34 @@ public class TransactionService : ITransactionService
 {
     private readonly ITransactionRepository _transactionRepository;
     private readonly IPortfolioRepository _portfolioRepository;
+    private readonly IFifoEngine _fifoEngine;
 
     public TransactionService(
         ITransactionRepository transactionRepository,
-        IPortfolioRepository portfolioRepository)
+        IPortfolioRepository portfolioRepository,
+        IFifoEngine fifoEngine)
     {
         _transactionRepository = transactionRepository;
         _portfolioRepository = portfolioRepository;
+        _fifoEngine = fifoEngine;
     }
 
     public async Task<TransactionResponse> CreateTransactionAsync(Guid portfolioId, string userId, CreateTransactionRequest request)
     {
         await EnsurePortfolioBelongsToUserAsync(portfolioId, userId);
         ValidateRequest(request.Symbol, request.Quantity, request.Price, request.TradeDate);
+
+        if (request.Type == TransactionType.SELL)
+        {
+            var existingTransactions = await _transactionRepository.GetPortfolioTransactionsAsync(portfolioId);
+            var holdings = _fifoEngine.CalculateHoldings(existingTransactions);
+            var symbol = request.Symbol.Trim().ToUpperInvariant();
+            var holding = holdings.FirstOrDefault(h => h.Symbol == symbol);
+            if (holding == null || holding.Quantity < request.Quantity)
+                throw new InvalidOperationException(
+                    $"Insufficient holdings: cannot sell {request.Quantity} of {symbol} " +
+                    $"(available: {holding?.Quantity ?? 0}).");
+        }
 
         var transaction = new Transaction
         {
@@ -30,7 +45,7 @@ public class TransactionService : ITransactionService
             Quantity = request.Quantity,
             Price = request.Price,
             Fee = request.Fee,
-            TradeDate = DateTime.SpecifyKind(request.TradeDate.Date, DateTimeKind.Utc),
+            TradeDate = DateTime.SpecifyKind(request.TradeDate, DateTimeKind.Utc),
             Notes = request.Notes?.Trim(),
         };
 
@@ -49,17 +64,11 @@ public class TransactionService : ITransactionService
     public async Task<TransactionResponse> UpdateTransactionAsync(Guid id, Guid portfolioId, string userId, UpdateTransactionRequest request)
     {
         await EnsurePortfolioBelongsToUserAsync(portfolioId, userId);
-        ValidateRequest(request.Symbol, request.Quantity, request.Price, request.TradeDate);
 
         var transaction = await _transactionRepository.GetTransactionByIdAsync(id, portfolioId)
             ?? throw new KeyNotFoundException($"Transaction with id '{id}' not found.");
 
-        transaction.Symbol = request.Symbol.Trim().ToUpperInvariant();
-        transaction.Type = request.Type;
-        transaction.Quantity = request.Quantity;
-        transaction.Price = request.Price;
         transaction.Fee = request.Fee;
-        transaction.TradeDate = DateTime.SpecifyKind(request.TradeDate.Date, DateTimeKind.Utc);
         transaction.Notes = request.Notes?.Trim();
 
         var updated = await _transactionRepository.UpdateTransactionAsync(transaction);
@@ -89,10 +98,10 @@ public class TransactionService : ITransactionService
         if (quantity <= 0)
             throw new ArgumentException("Quantity must be greater than zero.");
 
-        if (price < 0)
-            throw new ArgumentException("Price cannot be negative.");
+        if (price <= 0)
+            throw new ArgumentException("Price must be greater than zero.");
 
-        if (tradeDate.Date > DateTime.UtcNow.Date)
+        if (tradeDate > DateTime.UtcNow)
             throw new ArgumentException("Trade date cannot be in the future.");
     }
 

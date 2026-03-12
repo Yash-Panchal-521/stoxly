@@ -26,11 +26,6 @@ export interface CreateTransactionRequest {
 
 export interface UpdateTransactionRequest {
   portfolioId: string;
-  symbol: string;
-  type: TransactionType;
-  quantity: number;
-  price: number;
   fee?: number;
-  tradeDate: string;
-  notes?: string;
+  notes?: string | null;
 }

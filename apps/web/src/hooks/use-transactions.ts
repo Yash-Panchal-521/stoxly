@@ -22,7 +22,12 @@ export function useCreateTransaction(portfolioId: string) {
     mutationFn: (data: CreateTransactionRequest) =>
       createTransaction(portfolioId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["transactions", portfolioId] });
+      queryClient.invalidateQueries({
+        queryKey: ["transactions", portfolioId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["portfolios", portfolioId, "holdings"],
+      });
     },
   });
 }
@@ -33,7 +38,12 @@ export function useDeleteTransaction(portfolioId: string) {
     mutationFn: (transactionId: string) =>
       deleteTransaction(transactionId, portfolioId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["transactions", portfolioId] });
+      queryClient.invalidateQueries({
+        queryKey: ["transactions", portfolioId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["portfolios", portfolioId, "holdings"],
+      });
     },
   });
 }

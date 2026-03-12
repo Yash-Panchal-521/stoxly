@@ -23,7 +23,7 @@ public class TransactionRepository : ITransactionRepository
     public async Task<List<Transaction>> GetPortfolioTransactionsAsync(Guid portfolioId)
     {
         return await _db.Transactions
-            .Where(t => t.PortfolioId == portfolioId)
+            .Where(t => t.PortfolioId == portfolioId && t.DeletedAt == null)
             .OrderByDescending(t => t.TradeDate)
             .ThenByDescending(t => t.CreatedAt)
             .AsNoTracking()

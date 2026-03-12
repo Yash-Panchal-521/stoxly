@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { onAuthStateChanged, type User } from "firebase/auth";
+import { useQueryClient } from "@tanstack/react-query";
 import { auth } from "@/lib/firebase";
 import {
   registerWithEmail,
@@ -38,9 +39,14 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (!firebaseUser) {
+        // Clear cached data whenever a session ends (logout, token expiry, another tab sign-out)
+        queryClient.clear();
+      }
       setUser(firebaseUser);
       setLoading(false);
 
@@ -54,7 +60,15 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
     });
 
     return unsubscribe;
-  }, []);
+  }, [queryClient]);
+
+  const logout = useMemo(
+    () => async (): Promise<{ error: string | null }> => {
+      queryClient.clear();
+      return firebaseLogout();
+    },
+    [queryClient],
+  );
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -63,9 +77,9 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
       registerWithEmail,
       loginWithEmail,
       loginWithGoogle,
-      logout: firebaseLogout,
+      logout,
     }),
-    [user, loading],
+    [user, loading, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

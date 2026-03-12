@@ -12,10 +12,12 @@ namespace Stoxly.Api.Controllers;
 public class PortfolioController : ControllerBase
 {
     private readonly IPortfolioService _portfolioService;
+    private readonly IHoldingsService _holdingsService;
 
-    public PortfolioController(IPortfolioService portfolioService)
+    public PortfolioController(IPortfolioService portfolioService, IHoldingsService holdingsService)
     {
         _portfolioService = portfolioService;
+        _holdingsService = holdingsService;
     }
 
     [HttpPost]
@@ -56,6 +58,14 @@ public class PortfolioController : ControllerBase
         var userId = GetUserId();
         await _portfolioService.DeletePortfolioAsync(id, userId);
         return NoContent();
+    }
+
+    [HttpGet("{portfolioId:guid}/holdings")]
+    public async Task<IActionResult> GetHoldings(Guid portfolioId)
+    {
+        var userId = GetUserId();
+        var holdings = await _holdingsService.GetHoldingsAsync(portfolioId, userId);
+        return Ok(holdings);
     }
 
     private string GetUserId()
