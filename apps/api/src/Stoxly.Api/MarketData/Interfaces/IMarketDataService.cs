@@ -15,4 +15,11 @@ public interface IMarketDataService
     /// Checks the local database first; calls the external API when fewer than 5 local results are found.
     /// </summary>
     Task<IReadOnlyList<SymbolSearchResultDto>> SearchSymbolsAsync(string query);
+
+    /// <summary>
+    /// Returns daily closing prices for a symbol between two dates (inclusive).
+    /// Weekends and holidays are absent from the result; callers should fill-forward as needed.
+    /// Historical data is cached in Redis for 24 hours.
+    /// </summary>
+    Task<IReadOnlyDictionary<DateOnly, decimal>> GetDailyClosesAsync(string symbol, DateOnly from, DateOnly to);
 }

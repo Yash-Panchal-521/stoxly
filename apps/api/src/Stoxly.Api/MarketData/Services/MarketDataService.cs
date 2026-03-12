@@ -30,30 +30,11 @@ public sealed class MarketDataService : IMarketDataService
 
         var cached = await _cache.GetAsync<StockPriceCacheEntry>(key);
         if (cached is not null)
-        {
-            return new StockPriceDto(
-                normalised,
-                cached.Price,
-                cached.Change,
-                cached.ChangePercent,
-                HighPrice: 0m,
-                LowPrice: 0m,
-                OpenPrice: 0m,
-                PreviousClose: 0m,
-                cached.UpdatedAt);
-        }
+            return CacheEntryToDto(normalised, cached);
 
         var price = await _finnhubClient.GetQuoteAsync(normalised);
         if (price is not null)
-        {
-            var entry = new StockPriceCacheEntry(
-                price.CurrentPrice,
-                price.Change,
-                price.ChangePercent,
-                price.Timestamp);
-
-            await _cache.SetAsync(key, entry, PriceCacheTtl);
-        }
+            await _cache.SetAsync(key, DtoToCacheEntry(price), PriceCacheTtl);
 
         return price;
     }
@@ -66,10 +47,33 @@ public sealed class MarketDataService : IMarketDataService
             .Distinct()
             .ToList();
 
-        var tasks = distinct.Select(GetPriceAsync);
-        var results = await Task.WhenAll(tasks);
+        if (distinct.Count == 0)
+            return [];
 
-        return results.Where(p => p is not null).Cast<StockPriceDto>().ToList().AsReadOnly();
+        // Check all cache entries concurrently first.
+        var cacheTasks = distinct.Select(t => (Ticker: t, Task: _cache.GetAsync<StockPriceCacheEntry>(CacheKey.Price(t))));
+        var cacheResults = await Task.WhenAll(cacheTasks.Select(x => x.Task));
+
+        var hits = new List<StockPriceDto>(distinct.Count);
+        var misses = new List<string>();
+
+        for (var i = 0; i < distinct.Count; i++)
+        {
+            if (cacheResults[i] is not null)
+                hits.Add(CacheEntryToDto(distinct[i], cacheResults[i]!));
+            else
+                misses.Add(distinct[i]);
+        }
+
+        if (misses.Count > 0)
+        {
+            var fresh = await _finnhubClient.GetBulkQuotesAsync(misses);
+            var storeTasks = fresh.Select(p => _cache.SetAsync(CacheKey.Price(p.Symbol), DtoToCacheEntry(p), PriceCacheTtl));
+            await Task.WhenAll(storeTasks);
+            hits.AddRange(fresh);
+        }
+
+        return hits.AsReadOnly();
     }
 
     public async Task<IReadOnlyList<SymbolSearchResultDto>> SearchSymbolsAsync(string query)
@@ -109,6 +113,39 @@ public sealed class MarketDataService : IMarketDataService
             await _cache.SetAsync(cacheKey, results, SearchCacheTtl);
 
         return results.AsReadOnly();
+    }
+
+    private static StockPriceCacheEntry DtoToCacheEntry(StockPriceDto p) =>
+        new(p.CurrentPrice, p.Change, p.ChangePercent, p.HighPrice, p.LowPrice, p.OpenPrice, p.PreviousClose, p.Timestamp);
+
+    private static StockPriceDto CacheEntryToDto(string symbol, StockPriceCacheEntry e) =>
+        new(symbol, e.Price, e.Change, e.ChangePercent, e.HighPrice, e.LowPrice, e.OpenPrice, e.PreviousClose, e.UpdatedAt);
+
+    public async Task<IReadOnlyDictionary<DateOnly, decimal>> GetDailyClosesAsync(
+        string symbol, DateOnly from, DateOnly to)
+    {
+        var normalised = symbol.Trim().ToUpperInvariant();
+
+        // Historical data is immutable once the trading day closes — cache 24 h.
+        // Use string-keyed dict because DateOnly is not directly JSON-serialisable
+        // by the default System.Text.Json converters in all target runtimes.
+        var cacheKey = $"stock:candles:{normalised}:{from:yyyy-MM-dd}:{to:yyyy-MM-dd}";
+        var cached = await _cache.GetAsync<Dictionary<string, decimal>>(cacheKey);
+        if (cached is not null)
+            return cached.ToDictionary(
+                kvp => DateOnly.ParseExact(kvp.Key, "yyyy-MM-dd"),
+                kvp => kvp.Value);
+
+        var closes = await _finnhubClient.GetDailyClosesAsync(normalised, from, to);
+
+        if (closes.Count > 0)
+        {
+            var serialisable = closes
+                .ToDictionary(kvp => kvp.Key.ToString("yyyy-MM-dd"), kvp => kvp.Value);
+            await _cache.SetAsync(cacheKey, serialisable, TimeSpan.FromHours(24));
+        }
+
+        return closes;
     }
 
     private Task PersistSymbolsAsync(IReadOnlyList<StockSymbolDto> dtos)

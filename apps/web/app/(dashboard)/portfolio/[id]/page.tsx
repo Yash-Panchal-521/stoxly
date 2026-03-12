@@ -6,6 +6,7 @@ import { usePortfolio } from "@/hooks/use-portfolio";
 import { Button } from "@/components/ui/button";
 import DeletePortfolioDialog from "@/features/portfolios/DeletePortfolioDialog";
 import HoldingsTable from "@/features/portfolios/HoldingsTable";
+import PerformanceChart from "@/features/portfolios/PerformanceChart";
 import TransactionList from "@/features/transactions/TransactionList";
 
 function formatDate(dateString: string): string {
@@ -88,19 +89,14 @@ export default function PortfolioDetailPage() {
         </p>
       </div>
 
+      {/* Performance Chart */}
+      <PerformanceChart portfolioId={portfolio.id} />
+
       {/* Transactions */}
       <TransactionList portfolioId={portfolio.id} />
 
       {/* Holdings */}
       <HoldingsTable portfolioId={portfolio.id} />
-
-      {/* Future placeholders */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div className="stoxly-card flex flex-col items-center justify-center py-10">
-          <span className="text-h3 text-muted">Analytics</span>
-          <span className="text-small text-muted mt-1">Coming soon</span>
-        </div>
-      </div>
       <DeletePortfolioDialog
         portfolioId={portfolio.id}
         portfolioName={portfolio.name}

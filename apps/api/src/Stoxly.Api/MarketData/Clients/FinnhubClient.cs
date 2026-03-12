@@ -27,7 +27,13 @@ public sealed class FinnhubClient : IFinnhubClient
     public async Task<StockPriceDto?> GetQuoteAsync(string symbol)
     {
         var url = $"{_options.BaseUrl}/quote?symbol={Uri.EscapeDataString(symbol)}&token={_options.ApiKey}";
-        var quote = await _httpClient.GetFromJsonAsync<FinnhubQuoteResponse>(url);
+        using var response = await _httpClient.GetAsync(url);
+
+        // Return null for any non-success status (403 for unsupported symbols on free tier, etc.)
+        if (!response.IsSuccessStatusCode)
+            return null;
+
+        var quote = await response.Content.ReadFromJsonAsync<FinnhubQuoteResponse>();
 
         // Finnhub returns all-zero values for unknown symbols
         if (quote is null || quote.CurrentPrice == 0)
@@ -45,10 +51,44 @@ public sealed class FinnhubClient : IFinnhubClient
             DateTimeOffset.FromUnixTimeSeconds(quote.Timestamp));
     }
 
+    public async Task<IReadOnlyList<StockPriceDto>> GetBulkQuotesAsync(IEnumerable<string> symbols)
+    {
+        var tickers = symbols
+            .Select(s => s.Trim().ToUpperInvariant())
+            .Where(s => s.Length > 0)
+            .Distinct()
+            .ToList();
+
+        if (tickers.Count == 0)
+            return [];
+
+        // Finnhub free tier allows ~30 req/s; limit concurrent calls to avoid 429s.
+        using var semaphore = new SemaphoreSlim(10, 10);
+
+        var tasks = tickers.Select(async ticker =>
+        {
+            await semaphore.WaitAsync();
+            try { return await GetQuoteAsync(ticker); }
+            finally { semaphore.Release(); }
+        });
+
+        var results = await Task.WhenAll(tasks);
+
+        return results
+            .OfType<StockPriceDto>()
+            .ToList()
+            .AsReadOnly();
+    }
+
     public async Task<IReadOnlyList<StockSymbolDto>> SearchSymbolsAsync(string query)
     {
         var url = $"{_options.BaseUrl}/search?q={Uri.EscapeDataString(query)}&token={_options.ApiKey}";
-        var response = await _httpClient.GetFromJsonAsync<FinnhubSearchResponse>(url);
+        using var httpResponse = await _httpClient.GetAsync(url);
+
+        if (!httpResponse.IsSuccessStatusCode)
+            return [];
+
+        var response = await httpResponse.Content.ReadFromJsonAsync<FinnhubSearchResponse>();
 
         if (response?.Result is null)
             return [];
@@ -58,9 +98,49 @@ public sealed class FinnhubClient : IFinnhubClient
             .ToList()
             .AsReadOnly();
     }
+
+    public async Task<IReadOnlyDictionary<DateOnly, decimal>> GetDailyClosesAsync(
+        string symbol, DateOnly from, DateOnly to)
+    {
+        var fromTs = new DateTimeOffset(from.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero).ToUnixTimeSeconds();
+        // Include the full end day by pointing to one second before midnight of the next day
+        var toTs = new DateTimeOffset(to.AddDays(1).ToDateTime(TimeOnly.MinValue), TimeSpan.Zero)
+            .ToUnixTimeSeconds() - 1;
+
+        var url = $"{_options.BaseUrl}/stock/candle" +
+                  $"?symbol={Uri.EscapeDataString(symbol)}&resolution=D" +
+                  $"&from={fromTs}&to={toTs}&token={_options.ApiKey}";
+
+        using var httpResponse = await _httpClient.GetAsync(url);
+        if (!httpResponse.IsSuccessStatusCode)
+            return new Dictionary<DateOnly, decimal>();
+
+        var response = await httpResponse.Content.ReadFromJsonAsync<FinnhubCandleResponse>();
+
+        if (response is null || response.Status != "ok"
+            || response.ClosePrices is null || response.Timestamps is null)
+            return new Dictionary<DateOnly, decimal>();
+
+        var result = new Dictionary<DateOnly, decimal>(response.Timestamps.Count);
+        for (var i = 0; i < response.Timestamps.Count; i++)
+        {
+            var date = DateOnly.FromDateTime(
+                DateTimeOffset.FromUnixTimeSeconds(response.Timestamps[i]).UtcDateTime);
+            result[date] = response.ClosePrices[i];
+        }
+
+        return result;
+    }
 }
 
 // ── Internal Finnhub response models ─────────────────────────────────────────
+
+internal sealed class FinnhubCandleResponse
+{
+    [JsonPropertyName("c")] public IReadOnlyList<decimal>? ClosePrices { get; init; }
+    [JsonPropertyName("s")] public string Status { get; init; } = string.Empty;
+    [JsonPropertyName("t")] public IReadOnlyList<long>? Timestamps { get; init; }
+}
 
 internal sealed class FinnhubQuoteResponse
 {

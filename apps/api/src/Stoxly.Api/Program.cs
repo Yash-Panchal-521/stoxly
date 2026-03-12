@@ -31,6 +31,7 @@ builder.Services.AddScoped<ISymbolRepository, SymbolRepository>();
 builder.Services.AddSingleton<IFifoEngine, FifoEngine>();
 builder.Services.AddScoped<IHoldingsService, HoldingsService>();
 builder.Services.AddScoped<IPortfolioMetricsService, PortfolioMetricsService>();
+builder.Services.AddScoped<IPortfolioPerformanceService, PortfolioPerformanceService>();
 builder.Services.AddScoped<IMarketPriceService, StubMarketPriceService>();
 
 // ── MarketData module ─────────────────────────────────────────────────────────

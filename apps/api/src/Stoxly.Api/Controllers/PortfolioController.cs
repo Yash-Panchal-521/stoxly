@@ -13,11 +13,16 @@ public class PortfolioController : ControllerBase
 {
     private readonly IPortfolioService _portfolioService;
     private readonly IHoldingsService _holdingsService;
+    private readonly IPortfolioPerformanceService _performanceService;
 
-    public PortfolioController(IPortfolioService portfolioService, IHoldingsService holdingsService)
+    public PortfolioController(
+        IPortfolioService portfolioService,
+        IHoldingsService holdingsService,
+        IPortfolioPerformanceService performanceService)
     {
         _portfolioService = portfolioService;
         _holdingsService = holdingsService;
+        _performanceService = performanceService;
     }
 
     [HttpPost]
@@ -66,6 +71,18 @@ public class PortfolioController : ControllerBase
         var userId = GetUserId();
         var holdings = await _holdingsService.GetHoldingsAsync(portfolioId, userId);
         return Ok(holdings);
+    }
+
+    /// <summary>
+    /// Returns daily portfolio value snapshots from the first transaction date to today.
+    /// Uses Finnhub historical candle data (fill-forwarded across weekends/holidays).
+    /// </summary>
+    [HttpGet("{portfolioId:guid}/performance")]
+    public async Task<IActionResult> GetPerformance(Guid portfolioId)
+    {
+        var userId = GetUserId();
+        var dataPoints = await _performanceService.GetPerformanceAsync(portfolioId, userId);
+        return Ok(dataPoints);
     }
 
     private string GetUserId()

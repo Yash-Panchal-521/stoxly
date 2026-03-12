@@ -2,6 +2,7 @@ import { apiGet, apiPost, apiPatch, apiDelete } from "@/lib/api-client";
 import type {
   CreatePortfolioRequest,
   HoldingDto,
+  PerformanceDataPoint,
   PortfolioResponse,
   UpdatePortfolioRequest,
 } from "@/types/portfolio";
@@ -35,4 +36,12 @@ export async function deletePortfolio(id: string): Promise<void> {
 
 export async function getHoldings(portfolioId: string): Promise<HoldingDto[]> {
   return apiGet<HoldingDto[]>(`${BASE_PATH}/${portfolioId}/holdings`);
+}
+
+export async function getPerformance(
+  portfolioId: string,
+): Promise<PerformanceDataPoint[]> {
+  return apiGet<PerformanceDataPoint[]>(
+    `${BASE_PATH}/${portfolioId}/performance`,
+  );
 }

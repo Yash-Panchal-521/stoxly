@@ -34,3 +34,8 @@ export interface PortfolioMetricsDto {
   unrealizedProfit: number;
   totalProfit: number;
 }
+
+export interface PerformanceDataPoint {
+  date: string;
+  value: number;
+}
