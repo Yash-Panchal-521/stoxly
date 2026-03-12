@@ -6,26 +6,26 @@
 
 ## Overall Status
 
-| Area                           | Status                                          |
-| ------------------------------ | ----------------------------------------------- |
-| Authentication                 | ✅ Complete                                     |
-| Portfolio Management           | ✅ Complete                                     |
-| Transaction Recording          | ✅ Complete                                     |
-| Holdings Tracking              | ✅ Complete                                     |
-| Portfolio Metrics              | 🔄 Backend done, UI pending                     |
-| Dashboard UI                   | ✅ Complete                                     |
-| Landing Page                   | ✅ Complete                                     |
-| Design System                  | ✅ Complete                                     |
-| Market Data Module             | ✅ Complete                                     |
-| Symbol Search                  | ✅ Complete (DB-first + Finnhub)                |
-| Redis Price Caching            | ✅ Complete (60 s live, 24 h historical)        |
-| Background Price Worker        | ✅ Complete (30 s interval)                     |
-| Real-Time Updates (SignalR)    | ✅ Backend complete, frontend next              |
-| Symbol Validation              | ✅ Complete                                     |
-| Rate Limiting                  | ✅ Complete (30 req/min per IP)                 |
-| Historical Price API           | ✅ Complete (Yahoo Finance, weekend fallback)   |
-| Alpha Vantage integration      | 🗑️ Removed (replaced by Yahoo Finance)         |
-| Watchlist                      | ❌ Not started                                  |
+| Area                        | Status                                        |
+| --------------------------- | --------------------------------------------- |
+| Authentication              | ✅ Complete                                   |
+| Portfolio Management        | ✅ Complete                                   |
+| Transaction Recording       | ✅ Complete                                   |
+| Holdings Tracking           | ✅ Complete                                   |
+| Portfolio Metrics           | 🔄 Backend done, UI pending                   |
+| Dashboard UI                | ✅ Complete                                   |
+| Landing Page                | ✅ Complete                                   |
+| Design System               | ✅ Complete                                   |
+| Market Data Module          | ✅ Complete                                   |
+| Symbol Search               | ✅ Complete (DB-first + Finnhub)              |
+| Redis Price Caching         | ✅ Complete (60 s live, 24 h historical)      |
+| Background Price Worker     | ✅ Complete (30 s interval)                   |
+| Real-Time Updates (SignalR) | ✅ Backend complete, frontend next            |
+| Symbol Validation           | ✅ Complete                                   |
+| Rate Limiting               | ✅ Complete (30 req/min per IP)               |
+| Historical Price API        | ✅ Complete (Yahoo Finance, weekend fallback) |
+| Alpha Vantage integration   | 🗑️ Removed (replaced by Yahoo Finance)        |
+| Watchlist                   | ❌ Not started                                |
 
 ---
 
