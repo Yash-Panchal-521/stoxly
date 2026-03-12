@@ -15,20 +15,20 @@ public sealed class MarketDataService : IMarketDataService
     private static readonly TimeSpan SearchCacheTtl = TimeSpan.FromMinutes(5);
 
     private readonly IFinnhubClient _finnhubClient;
-    private readonly IAlphaVantageClient _alphaVantageClient;
+    private readonly IYahooFinanceClient _yahooFinanceClient;
     private readonly IMarketDataCache _cache;
     private readonly ISymbolRepository _symbolRepository;
     private readonly ILogger<MarketDataService> _logger;
 
     public MarketDataService(
         IFinnhubClient finnhubClient,
-        IAlphaVantageClient alphaVantageClient,
+        IYahooFinanceClient yahooFinanceClient,
         IMarketDataCache cache,
         ISymbolRepository symbolRepository,
         ILogger<MarketDataService> logger)
     {
         _finnhubClient = finnhubClient;
-        _alphaVantageClient = alphaVantageClient;
+        _yahooFinanceClient = yahooFinanceClient;
         _cache = cache;
         _symbolRepository = symbolRepository;
         _logger = logger;
@@ -147,7 +147,7 @@ public sealed class MarketDataService : IMarketDataService
                 kvp => DateOnly.ParseExact(kvp.Key, DateFormat, System.Globalization.CultureInfo.InvariantCulture),
                 kvp => kvp.Value);
 
-        var closes = await _finnhubClient.GetDailyClosesAsync(normalised, from, to);
+        var closes = await _yahooFinanceClient.GetDailyClosesAsync(normalised, from, to);
 
         if (closes.Count > 0)
         {
@@ -195,10 +195,10 @@ public sealed class MarketDataService : IMarketDataService
                 return new StockHistoricalPriceDto(normalised, dateStr, quote.CurrentPrice);
             }
 
-            // Historical date: use AlphaVantage TIME_SERIES_DAILY.
-            var closes = await _alphaVantageClient.GetDailyClosesAsync(normalised, date, date);
+            // Historical date: use Yahoo Finance with automatic fallback to the closest prior trading day.
+            var price = await _yahooFinanceClient.GetHistoricalPriceAsync(normalised, date);
 
-            if (!closes.TryGetValue(date, out var price))
+            if (price is null)
             {
                 _logger.LogWarning(
                     "No historical price data available for {Symbol} on {Date}",
@@ -206,12 +206,12 @@ public sealed class MarketDataService : IMarketDataService
                 return null;
             }
 
-            var result = new StockHistoricalPriceDto(normalised, dateStr, price);
+            var result = new StockHistoricalPriceDto(normalised, dateStr, price.Value);
             await _cache.SetAsync(cacheKey, result, HistoricalPriceCacheTtl);
 
             _logger.LogInformation(
                 "Historical price for {Symbol} on {Date}: {Price}",
-                normalised, dateStr, price);
+                normalised, dateStr, price.Value);
 
             return result;
         }

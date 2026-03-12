@@ -38,16 +38,16 @@ builder.Services.AddScoped<IMarketPriceService, StubMarketPriceService>();
 builder.Services.Configure<FinnhubOptions>(
     builder.Configuration.GetSection(FinnhubOptions.SectionName));
 
-builder.Services.Configure<AlphaVantageOptions>(
-    builder.Configuration.GetSection(AlphaVantageOptions.SectionName));
-
 builder.Services.AddStackExchangeRedisCache(options =>
 {
     options.Configuration = builder.Configuration.GetConnectionString("Redis");
 });
 
 builder.Services.AddHttpClient<IFinnhubClient, FinnhubClient>();
-builder.Services.AddHttpClient<IAlphaVantageClient, AlphaVantageClient>();
+builder.Services.AddHttpClient<IYahooFinanceClient, YahooFinanceClient>(client =>
+{
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (compatible; Stoxly/1.0)");
+});
 builder.Services.AddSingleton<IMarketDataCache, RedisMarketDataCache>();
 builder.Services.AddScoped<IMarketDataService, MarketDataService>();
 

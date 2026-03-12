@@ -1,6 +1,6 @@
 namespace Stoxly.Api.MarketData.Clients;
 
-public interface IAlphaVantageClient
+public interface IYahooFinanceClient
 {
     /// <summary>
     /// Returns daily closing prices for a symbol between two dates (inclusive).
@@ -9,4 +9,11 @@ public interface IAlphaVantageClient
     /// or the API call fails.
     /// </summary>
     Task<IReadOnlyDictionary<DateOnly, decimal>> GetDailyClosesAsync(string symbol, DateOnly from, DateOnly to);
+
+    /// <summary>
+    /// Returns the closing price for a symbol on the requested date.
+    /// If the date falls on a weekend or holiday, returns the price for the closest
+    /// prior trading day. Returns null if no data is available.
+    /// </summary>
+    Task<decimal?> GetHistoricalPriceAsync(string symbol, DateOnly date);
 }
