@@ -114,6 +114,50 @@ wait_for_service() {
   done
 }
 
+# ─── Redis ───────────────────────────────────────────────────────────────────
+# Starts redis-server as a background process if it is not already running on
+# port 6379.  On Windows/Git Bash redis-server.exe must be on PATH (e.g. from
+# the official Windows Redis release or Memurai).  If the binary is not found
+# the function prints a warning and sets REDIS_PID="" so the rest of the stack
+# still starts — the API will fail on first cache access with a clear error
+# rather than blocking startup.
+
+REDIS_PID=""
+
+start_redis() {
+  # If something is already listening on 6379, treat it as managed externally.
+  if [[ -n "$(port_pid 6379)" ]]; then
+    echo -e "  [REDIS]  Already running on port 6379 (external). Skipping start."
+    return 0
+  fi
+
+  if ! command -v redis-server &>/dev/null; then
+    echo -e "${YELLOW}  [REDIS]  redis-server not found on PATH.${NC}"
+    echo -e "${GRAY}           Install Redis (or Memurai on Windows) and make sure it is on PATH.${NC}"
+    echo -e "${GRAY}           Without Redis the market data cache will throw connection errors.${NC}"
+    echo ""
+    return 0
+  fi
+
+  echo -e "  [REDIS]  Starting Redis server on port 6379..."
+  redis-server --port 6379 --loglevel notice --save "" --appendonly no \
+    >"$LOG_DIR/redis.log" 2>&1 &
+  REDIS_PID=$!
+
+  # Wait up to 10 s for Redis to bind
+  local elapsed=0
+  while (( elapsed < 10 )); do
+    if [[ -n "$(port_pid 6379)" ]]; then
+      echo -e "  [REDIS]  ${GREEN}Ready${NC} on port 6379  (PID $REDIS_PID)"
+      return 0
+    fi
+    sleep 1
+    (( elapsed++ ))
+  done
+
+  echo -e "${YELLOW}  [REDIS]  Timed out waiting for Redis (port 6379). Check $LOG_DIR/redis.log${NC}"
+}
+
 # ─── Start ────────────────────────────────────────────────────────────────────
 
 start_stack() {
@@ -134,6 +178,10 @@ start_stack() {
   fi
 
   mkdir -p "$LOG_DIR"
+
+  # ── Redis ─────────────────────────────────────────────────────────────────
+  start_redis
+  echo ""
 
   # ── Pre-flight: wait for required ports to be free ────────────────────────
   # On Windows, the OS can hold a port for a moment after a SIGKILL — poll
@@ -176,7 +224,11 @@ start_stack() {
   WEB_PID=$!
 
   # Persist PIDs immediately so stop works even if we are interrupted
-  printf "API_PID=%d\nWEB_PID=%d\n" "$API_PID" "$WEB_PID" > "$PID_FILE"
+  {
+    printf "API_PID=%d\n" "$API_PID"
+    printf "WEB_PID=%d\n" "$WEB_PID"
+    [[ -n "${REDIS_PID:-}" ]] && printf "REDIS_PID=%d\n" "$REDIS_PID"
+  } > "$PID_FILE"
 
   echo ""
 
@@ -191,6 +243,7 @@ start_stack() {
   echo -e "${GREEN}  │  ✓ API      →  http://localhost:5000         │${NC}"
   echo -e "${GREEN}  │  ✓ Swagger  →  http://localhost:5000/swagger │${NC}"
   echo -e "${GREEN}  │  ✓ Web      →  http://localhost:3000         │${NC}"
+  echo -e "${GREEN}  │  ✓ Redis    →  localhost:6379                │${NC}"
   echo -e "${CYAN}  └──────────────────────────────────────────────┘${NC}"
   echo ""
   echo -e "${GRAY}  Logs  →  $LOG_DIR/${NC}"
@@ -212,7 +265,7 @@ stop_stack() {
     # shellcheck source=/dev/null
     source "$PID_FILE"
 
-    for entry in "API:${API_PID:-}" "WEB:${WEB_PID:-}"; do
+    for entry in "API:${API_PID:-}" "WEB:${WEB_PID:-}" "REDIS:${REDIS_PID:-}"; do
       label="${entry%%:*}"
       pid="${entry##*:}"
       if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
@@ -263,7 +316,7 @@ force_kill_stack() {
   fi
 
   # 2. Kill anything still on the service ports (Windows/Git Bash safe)
-  for entry in "API:5000" "WEB:3000"; do
+  for entry in "API:5000" "WEB:3000" "REDIS:6379"; do
     label="${entry%%:*}"
     port="${entry##*:}"
     # Try lsof first, fall back to netstat -ano on Windows/Git Bash
@@ -332,9 +385,10 @@ show_status() {
     ["API (ASP.NET)"]="5000"
     ["Web (Next.js)"]="3000"
     ["PostgreSQL"]="5432"
+    ["Redis"]="6379"
   )
 
-  for label in "API (ASP.NET)" "Web (Next.js)" "PostgreSQL"; do
+  for label in "API (ASP.NET)" "Web (Next.js)" "PostgreSQL" "Redis"; do
     port="${services[$label]}"
     pid="$(port_pid "$port")"
     padded_label="$(printf '%-16s' "$label")"

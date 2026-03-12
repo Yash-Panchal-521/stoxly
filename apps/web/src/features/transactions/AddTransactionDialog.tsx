@@ -5,10 +5,12 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { Button } from "@/components/ui/button";
 import { useCreateTransaction } from "@/hooks/use-transactions";
 import { useToast } from "@/hooks/use-toast";
+import StockSearch from "@/features/market/components/StockSearch";
 import type {
   CreateTransactionRequest,
   TransactionType,
 } from "@/types/transaction";
+import type { SymbolSearchResult } from "@/types/market";
 
 interface AddTransactionDialogProps {
   portfolioId: string;
@@ -44,7 +46,22 @@ export default function AddTransactionDialog({
 }: AddTransactionDialogProps) {
   const { toast } = useToast();
   const [form, setForm] = useState<CreateTransactionRequest>(defaultForm);
+  const [selectedSymbol, setSelectedSymbol] =
+    useState<SymbolSearchResult | null>(null);
+  // Incrementing this key forces StockSearch to remount and clear its input
+  // whenever the dialog opens, preventing stale search text.
+  const [searchKey, setSearchKey] = useState(0);
   const { mutate: create, isPending } = useCreateTransaction(portfolioId);
+
+  // Reset everything when the dialog opens
+  function handleOpenChange(next: boolean) {
+    if (next) {
+      setForm(defaultForm());
+      setSelectedSymbol(null);
+      setSearchKey((k) => k + 1);
+    }
+    onOpenChange(next);
+  }
 
   function set<K extends keyof CreateTransactionRequest>(
     key: K,
@@ -55,6 +72,7 @@ export default function AddTransactionDialog({
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!form.symbol) return;
     // form.tradeDate is a local-time string (from datetime-local input).
     // new Date(localString) parses it as local time; .toISOString() gives UTC.
     const tradeDateUtc = new Date(form.tradeDate).toISOString();
@@ -68,6 +86,8 @@ export default function AddTransactionDialog({
         onSuccess: () => {
           toast("Transaction added", "success");
           setForm(defaultForm());
+          setSelectedSymbol(null);
+          setSearchKey((k) => k + 1);
           onOpenChange(false);
         },
         onError: (err) => {
@@ -78,7 +98,7 @@ export default function AddTransactionDialog({
   }
 
   return (
-    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+    <Dialog.Root open={open} onOpenChange={handleOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" />
         <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-card p-6 shadow-sm">
@@ -88,14 +108,56 @@ export default function AddTransactionDialog({
               <label className="text-small text-text-secondary mb-1 block">
                 Symbol
               </label>
-              <input
-                className="stoxly-input w-full"
-                placeholder="e.g. AAPL"
-                value={form.symbol}
-                onChange={(e) => set("symbol", e.target.value)}
-                required
-                maxLength={20}
-              />
+
+              {selectedSymbol ? (
+                // Selected symbol chip — mirrors the dropdown item style
+                <div className="flex items-center justify-between rounded-xl border border-primary/40 bg-primary/5 px-3 py-2.5">
+                  <div className="min-w-0">
+                    <p className="text-body truncate font-medium text-text-primary">
+                      {selectedSymbol.name || selectedSymbol.symbol}
+                    </p>
+                    <p className="text-small mt-0.5">
+                      <span className="font-semibold text-text-primary">
+                        {selectedSymbol.symbol}
+                      </span>
+                      {selectedSymbol.exchange && (
+                        <span className="text-muted">
+                          {" "}
+                          &bull; {selectedSymbol.exchange}
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="ml-3 shrink-0 text-muted transition-colors hover:text-danger"
+                    aria-label="Change symbol"
+                    onClick={() => {
+                      setSelectedSymbol(null);
+                      set("symbol", "");
+                      setSearchKey((k) => k + 1);
+                    }}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 16 16"
+                      fill="currentColor"
+                      className="h-3.5 w-3.5"
+                    >
+                      <path d="M2.22 2.22a.75.75 0 0 1 1.06 0L8 6.94l4.72-4.72a.75.75 0 1 1 1.06 1.06L9.06 8l4.72 4.72a.75.75 0 1 1-1.06 1.06L8 9.06l-4.72 4.72a.75.75 0 0 1-1.06-1.06L6.94 8 2.22 3.28a.75.75 0 0 1 0-1.06Z" />
+                    </svg>
+                  </button>
+                </div>
+              ) : (
+                <StockSearch
+                  key={searchKey}
+                  placeholder="Search symbol or company…"
+                  onSelect={(result: SymbolSearchResult) => {
+                    setSelectedSymbol(result);
+                    set("symbol", result.symbol.toUpperCase());
+                  }}
+                />
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -204,7 +266,7 @@ export default function AddTransactionDialog({
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isPending}>
+              <Button type="submit" disabled={isPending || !form.symbol}>
                 {isPending ? "Adding..." : "Add Transaction"}
               </Button>
             </div>

@@ -8,15 +8,18 @@ public class TransactionService : ITransactionService
 {
     private readonly ITransactionRepository _transactionRepository;
     private readonly IPortfolioRepository _portfolioRepository;
+    private readonly ISymbolRepository _symbolRepository;
     private readonly IFifoEngine _fifoEngine;
 
     public TransactionService(
         ITransactionRepository transactionRepository,
         IPortfolioRepository portfolioRepository,
+        ISymbolRepository symbolRepository,
         IFifoEngine fifoEngine)
     {
         _transactionRepository = transactionRepository;
         _portfolioRepository = portfolioRepository;
+        _symbolRepository = symbolRepository;
         _fifoEngine = fifoEngine;
     }
 
@@ -24,6 +27,7 @@ public class TransactionService : ITransactionService
     {
         await EnsurePortfolioBelongsToUserAsync(portfolioId, userId);
         ValidateRequest(request.Symbol, request.Quantity, request.Price, request.TradeDate);
+        await EnsureSymbolExistsAsync(request.Symbol);
 
         if (request.Type == TransactionType.SELL)
         {
@@ -85,6 +89,15 @@ public class TransactionService : ITransactionService
     {
         _ = await _portfolioRepository.GetPortfolioByIdAsync(portfolioId, userId)
             ?? throw new KeyNotFoundException($"Portfolio with id '{portfolioId}' not found.");
+    }
+
+    private async Task EnsureSymbolExistsAsync(string symbol)
+    {
+        var ticker = symbol.Trim().ToUpperInvariant();
+        var exists = await _symbolRepository.GetSymbolAsync(ticker);
+        if (exists is null)
+            throw new ArgumentException(
+                $"Symbol '{ticker}' is not recognized. Search for the symbol first to register it.");
     }
 
     private static void ValidateRequest(string symbol, decimal quantity, decimal price, DateTime tradeDate)

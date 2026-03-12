@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.RegularExpressions;
 using Stoxly.Api.Models;
 
 namespace Stoxly.Api.DTOs;
@@ -7,6 +8,8 @@ public class CreateTransactionRequest
 {
     [Required]
     [MaxLength(20)]
+    [RegularExpression(@"^[A-Za-z0-9.\-]{1,20}$",
+        ErrorMessage = "Symbol may only contain letters, digits, dots, and hyphens.")]
     public string Symbol { get; set; } = string.Empty;
 
     [Required]

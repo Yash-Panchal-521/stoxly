@@ -10,9 +10,298 @@ The platform allows users to:
 - Simulate buy/sell transactions
 - Monitor portfolio performance
 - Receive real-time stock price updates
-- Maintain a watchlist
+- Maintain a watchlist (planned)
 
 Authentication is handled through Firebase Authentication. The frontend signs users in with Firebase and the backend verifies Firebase ID tokens without storing passwords.
+
+---
+
+# System Architecture
+
+The system consists of three main layers:
+
+1. Frontend Application
+2. Backend API
+3. Data & Infrastructure Services
+
+High-level architecture:
+
+```
+User
+→ Next.js Frontend (Vercel)
+→ ASP.NET Core API (Azure App Service)
+→ PostgreSQL (Azure Database for PostgreSQL)
+→ Redis (Azure Cache for Redis)
+```
+
+Real-time flow:
+
+```
+PriceUpdateWorker (every 30 s)
+→ IMarketDataService (Redis-first, Finnhub fallback)
+→ Redis cache updated
+→ PriceHub broadcasts PriceUpdated via SignalR
+→ Frontend updates ticker / portfolio value
+```
+
+Authentication flow:
+
+```
+User
+→ Next.js frontend
+→ Firebase Authentication
+→ ID token issued
+→ token sent to backend API
+→ ASP.NET Core verifies token
+→ backend processes request
+```
+
+---
+
+# Monorepo Structure
+
+The repository uses a monorepo layout.
+
+```
+stoxly/
+  apps/
+    web/        → Next.js frontend
+    api/        → ASP.NET Core API
+
+  services/
+    market-worker/  → reserved (worker is currently hosted inside the API)
+
+  packages/
+    shared-types/   → shared TypeScript types
+
+  docs/
+    architecture and project documentation
+```
+
+---
+
+# Frontend Architecture
+
+Framework: Next.js (App Router)
+
+Responsibilities:
+
+- UI rendering
+- portfolio dashboard
+- trade interface
+- watchlist management (planned)
+- real-time price display
+
+Key technologies:
+
+- TypeScript
+- TailwindCSS
+- shadcn/ui
+- TanStack Query
+- SignalR client (`@microsoft/signalr`)
+- Firebase SDK
+
+Folder structure under `apps/web/src/`:
+
+```
+auth/           → Firebase auth guard and context provider
+components/     → shared UI components (layout, cards, shadcn wrappers)
+features/
+  market/       → StockSearch combobox component
+  portfolios/   → portfolio list and detail components
+  transactions/ → AddTransactionDialog and transaction table
+hooks/          → TanStack Query hooks (use-holdings, use-portfolios, use-transactions)
+lib/            → api-client, firebase init, utils
+services/       → API wrappers (portfolio-service, transaction-service, market-service)
+types/          → TypeScript types (portfolio, transaction, market)
+```
+
+Data Flow:
+
+```
+Frontend
+→ API request via apiGet/apiPost (auth token injected automatically)
+→ Backend processes request
+→ Response returned
+→ TanStack Query cache updated
+→ UI re-renders
+```
+
+---
+
+# Backend Architecture
+
+Framework: ASP.NET Core (.NET 8)
+
+Backend folder structure under `apps/api/src/Stoxly.Api/`:
+
+```
+Controllers/          → thin HTTP handlers
+Services/             → business logic (portfolio, transactions, holdings, metrics)
+Repositories/         → EF Core data access
+Models/               → EF Core entity classes
+DTOs/                 → request/response shapes
+Data/                 → AppDbContext
+Migrations/           → EF Core migrations
+Middleware/           → ExceptionHandlingMiddleware, FirebaseAuthMiddleware
+Configurations/       → Firebase DI setup
+Hubs/                 → PriceHub (SignalR), PriceUpdateDto
+BackgroundServices/   → PriceUpdateWorker
+MarketData/
+  Caching/            → IMarketDataCache, RedisMarketDataCache, StockPriceCacheEntry
+  Clients/            → IFinnhubClient, FinnhubClient, FinnhubOptions
+  DTOs/               → StockPriceDto, SymbolSearchResultDto, StockSymbolDto
+  Interfaces/         → IMarketDataService
+  Services/           → MarketDataService
+```
+
+Layer responsibilities:
+
+- **Controllers** — validate input, call services, return HTTP responses. No business logic.
+- **Services** — all business logic lives here.
+- **Repositories** — all EF Core / database access lives here.
+- **Hubs** — SignalR hub for real-time price broadcasting.
+- **BackgroundServices** — hosted services that run on a timer inside the API process.
+- **MarketData** — self-contained module for external market data. Depends on nothing outside itself except DI-registered services.
+
+Authentication rules:
+
+- the backend does not store passwords
+- the backend does not manage login or registration flows
+- ASP.NET Core only verifies Firebase JWT tokens from the Authorization header
+- verified Firebase claims (`uid`, `email`) identify the user in the Stoxly database
+
+---
+
+# Market Data Module
+
+All external market data concerns are encapsulated in `MarketData/`.
+
+## Finnhub Client
+
+`IFinnhubClient` / `FinnhubClient` provides two operations:
+
+- `GetQuoteAsync(symbol)` → maps Finnhub `/quote` response to `StockPriceDto`
+- `SearchSymbolsAsync(query)` → maps Finnhub `/search` response to `IReadOnlyList<StockSymbolDto>`
+
+The base URL and API key are configured via `FinnhubOptions` bound to the `Finnhub` configuration section.
+
+## Redis Caching
+
+`IMarketDataCache` / `RedisMarketDataCache` wraps `IDistributedCache` with generic `GetAsync<T>` / `SetAsync<T>` methods using `System.Text.Json` serialisation.
+
+Cache key schema:
+
+| Key pattern             | Value type                    | TTL   |
+| ----------------------- | ----------------------------- | ----- |
+| `stock:price:{SYMBOL}`  | `StockPriceCacheEntry`        | 60 s  |
+| `market:search:{query}` | `List<SymbolSearchResultDto>` | 5 min |
+
+`StockPriceCacheEntry` stores only `{ Price, Change, ChangePercent, UpdatedAt }` — the minimal fields needed by price tickers — rather than the full OHLC `StockPriceDto`.
+
+## MarketDataService
+
+Orchestrates:
+
+1. Read from Redis (`IMarketDataCache`).
+2. On miss: call Finnhub (`IFinnhubClient`), write result back to Redis.
+3. For symbol search: query `symbols` table first (`ISymbolRepository`), supplement from Finnhub when < 5 local results, upsert Finnhub results into the table, cache the merged list.
+
+---
+
+# Real-Time System
+
+Real-time updates use **SignalR**.
+
+## PriceHub
+
+`PriceHub` is mounted at `/hubs/prices`.
+
+Client-callable methods:
+
+- `SubscribeToSymbol(symbol)` — joins group `price:{SYMBOL}`
+- `UnsubscribeFromSymbol(symbol)` — leaves group `price:{SYMBOL}`
+
+Server-to-client event:
+
+- `PriceUpdated` — payload is `PriceUpdateDto { Symbol, Price, Change, ChangePercent, UpdatedAt }`
+
+## PriceUpdateWorker
+
+`BackgroundService` hosted inside the API process. Ticks every 30 seconds:
+
+1. Opens a DI scope to resolve `AppDbContext` and `IMarketDataService`.
+2. Queries distinct symbols from all non-deleted transactions.
+3. Calls `IMarketDataService.GetPricesAsync` (Redis-first, Finnhub fallback).
+4. Broadcasts `PriceUpdated` to per-symbol SignalR groups.
+
+Watchlist symbols will be merged into the collection once that feature is implemented.
+
+---
+
+# Database Architecture
+
+Database: PostgreSQL
+
+Actual implemented tables:
+
+| Table          | Purpose                                               |
+| -------------- | ----------------------------------------------------- |
+| `users`        | Firebase-linked user identities                       |
+| `portfolios`   | User portfolios (soft-delete, one default per user)   |
+| `transactions` | Buy/sell records (soft-delete, FIFO recalculation)    |
+| `symbols`      | Discovered stock tickers (lazy-populated from search) |
+
+Planned tables: `watchlists`, `price_history`.
+
+All schema changes use EF Core migrations under `Migrations/`.
+
+---
+
+# Caching Layer
+
+Redis (`Microsoft.Extensions.Caching.StackExchangeRedis`) is used as:
+
+- **Price cache** — `stock:price:{SYMBOL}` → `StockPriceCacheEntry` (60 s)
+- **Search cache** — `market:search:{query}` → `List<SymbolSearchResultDto>` (5 min)
+
+The cache reduces Finnhub API calls and keeps the price worker's Finnhub quota low.
+
+---
+
+# Rate Limiting
+
+`GET /api/market/search` is protected by a fixed-window rate limiter:
+
+- 30 requests per minute per IP address
+- Uses `System.Threading.RateLimiting` (built into ASP.NET Core — no extra package)
+- Returns HTTP 429 on breach
+
+Policy name is defined in `RateLimitPolicies.MarketSearch`.
+
+---
+
+# Deployment Architecture
+
+Frontend: Vercel
+
+Backend: Azure App Service
+
+Infrastructure:
+
+- Azure Database for PostgreSQL → primary database
+- Azure Cache for Redis → price and search caching
+
+---
+
+# Scalability Considerations
+
+The system is designed to scale by:
+
+- separating frontend and backend services
+- using Redis caching to reduce Finnhub quota consumption and DB load
+- handling real-time communication via SignalR (Redis backplane available for multi-instance)
+- background worker runs inside the API process today; can be extracted to a dedicated worker service if load grows
 
 ---
 

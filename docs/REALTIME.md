@@ -2,172 +2,158 @@
 
 ## Overview
 
-Stoxly provides real-time updates for stock prices and portfolio values using **SignalR**.
-
-Real-time updates allow the frontend dashboard to update instantly when stock prices change or when a portfolio value is recalculated.
-
-The system is designed to minimize polling and reduce unnecessary API calls.
+Stoxly provides real-time stock price updates using **SignalR**. The backend pushes price changes directly to connected clients every 30 seconds, eliminating polling from the frontend.
 
 ---
 
 # Technology
 
-Real-time communication is implemented using:
-
-- **ASP.NET Core SignalR**
-- **WebSockets transport**
-- **SignalR client in Next.js**
-
-SignalR allows the backend to push updates directly to connected clients.
+- **ASP.NET Core SignalR** (built-in, no extra NuGet package)
+- **WebSocket transport**
+- **`@microsoft/signalr`** client on the Next.js frontend (planned)
 
 ---
 
-# SignalR Hub
+# Backend Implementation
 
-SignalR connections are managed through a hub.
+## PriceHub
 
-Endpoint:
+File: `apps/api/src/Stoxly.Api/Hubs/PriceHub.cs`
 
-```
-/hubs/market
-```
+Hub endpoint: `/hubs/prices`
 
-Responsibilities:
+`PriceHub` manages per-symbol subscription groups. Each symbol gets a dedicated SignalR group named `price:{SYMBOL}` (e.g. `price:AAPL`). Clients join only the groups they care about, keeping payload volume low.
 
-- broadcast stock price updates
-- broadcast portfolio value updates
-- notify clients of watchlist updates
+Client-callable hub methods:
 
-Example Hub:
+| Method                          | Effect                                     |
+| ------------------------------- | ------------------------------------------ |
+| `SubscribeToSymbol(symbol)`     | Adds client to group `price:{SYMBOL}`      |
+| `UnsubscribeFromSymbol(symbol)` | Removes client from group `price:{SYMBOL}` |
 
-```
-MarketHub
-```
+## PriceUpdateDto
 
----
+File: `apps/api/src/Stoxly.Api/Hubs/PriceUpdateDto.cs`
 
-# Events Emitted
+Payload broadcast on the `PriceUpdated` event:
 
-The backend sends the following events to connected clients.
-
-## priceUpdated
-
-Triggered when a stock price changes.
-
-Payload:
-
-```
+```json
 {
   "symbol": "AAPL",
-  "price": 176.42,
-  "timestamp": "2026-01-01T12:00:00Z"
+  "price": 211.45,
+  "change": 1.25,
+  "changePercent": 0.59,
+  "updatedAt": "2026-03-12T15:30:00Z"
 }
 ```
 
-Frontend behavior:
+Only the four fields needed for a live price ticker are included — not the full OHLC quote — to keep broadcast payloads minimal.
 
-- update stock cards
-- update portfolio value
-- update watchlist display
+## PriceUpdateWorker
 
----
+File: `apps/api/src/Stoxly.Api/BackgroundServices/PriceUpdateWorker.cs`
 
-## portfolioUpdated
+An `IHostedService` (`BackgroundService`) running inside the API process.
 
-Triggered when portfolio value changes.
+**Interval:** 30 seconds
 
-Payload:
+**Tick sequence:**
 
-```
-{
-  "portfolioId": "uuid",
-  "newValue": 15420.50
-}
-```
+1. Opens a DI scope (required because `AppDbContext` and `IMarketDataService` are scoped).
+2. Queries `transactions` for all distinct, non-deleted symbols — these represent the full set of symbols currently held across all user portfolios.
+3. Calls `IMarketDataService.GetPricesAsync(symbols)`:
+   - Checks `stock:price:{SYMBOL}` in Redis first (60 s TTL).
+   - Falls back to Finnhub `/quote` and writes result back to Redis on miss.
+4. Broadcasts a `PriceUpdated` event to each symbol's SignalR group concurrently via `Task.WhenAll`.
 
-Frontend behavior:
+Exceptions within a tick are caught and logged. The loop never crashes the host process.
 
-- update portfolio summary
-- update dashboard analytics
+**Watchlist note:** Once the `watchlists` table is implemented, those symbols will be merged into the collection in step 2.
 
 ---
 
 # Price Update Flow
 
-Stock price updates follow this flow:
-
-Market Data Source
-→ Market Worker fetches latest prices
-→ Backend updates database/cache
-→ SignalR broadcasts update
-→ Frontend receives event
-→ UI updates instantly
+```
+PriceUpdateWorker ticks (every 30 s)
+  → queries distinct symbols from transactions
+  → GetPricesAsync: Redis hit OR Finnhub fetch + Redis write
+  → IHubContext<PriceHub>.Clients.Group("price:AAPL").SendAsync("PriceUpdated", dto)
+  → subscribed frontend clients receive event
+  → UI updates ticker / portfolio value
+```
 
 ---
 
-# Connection Flow
+# Frontend Integration (planned)
 
-1. Frontend loads dashboard
-2. Client establishes SignalR connection
-3. Client subscribes to events
-4. Server pushes updates when data changes
+Install: `npm install @microsoft/signalr`
 
-Example frontend connection:
+Connection setup (example):
 
+```ts
+import * as signalR from "@microsoft/signalr";
+
+const connection = new signalR.HubConnectionBuilder()
+  .withUrl("/hubs/prices", {
+    accessTokenFactory: () => firebaseUser.getIdToken(),
+  })
+  .withAutomaticReconnect()
+  .build();
+
+await connection.start();
+
+// Subscribe to a symbol
+await connection.invoke("SubscribeToSymbol", "AAPL");
+
+// Handle incoming updates
+connection.on("PriceUpdated", (update: PriceUpdateDto) => {
+  // update React state / TanStack Query cache
+});
 ```
-/hubs/market
-```
+
+On unmount / when holdings change, call `UnsubscribeFromSymbol` to leave stale groups.
 
 ---
 
 # Subscription Strategy
 
-Clients subscribe only to relevant data.
-
-Examples:
-
-- stocks in portfolio
-- stocks in watchlist
-
-This reduces unnecessary network traffic.
+Clients subscribe only to symbols in their active portfolio (and watchlist, once implemented). This limits each connection to receiving only relevant updates, keeping payload volume proportional to the user's holdings count rather than the total symbol universe.
 
 ---
 
 # Performance Considerations
 
-To maintain performance:
-
-- avoid sending large payloads
-- broadcast only changed data
-- batch updates when possible
-- use Redis cache for latest prices
+- Payloads are minimal: 5 fields per symbol update.
+- Redis absorbs repeated Finnhub calls — Finnhub is only called on cache miss.
+- Concurrent broadcasts per tick use `Task.WhenAll` to avoid head-of-line blocking.
+- The worker runs a single DB query per tick regardless of connected client count.
 
 ---
 
 # Scaling Strategy
 
-SignalR supports horizontal scaling using:
+For multi-instance deployments:
 
-- Redis backplane
-- Azure SignalR Service
+- Add a **Redis backplane** (`builder.Services.AddSignalR().AddStackExchangeRedis(...)`) so hub groups are shared across instances.
+- Alternatively, use **Azure SignalR Service** to offload connection management entirely.
 
-For Stoxly, Redis may be used to synchronize updates across instances.
+Neither is needed for single-instance deployments.
 
 ---
 
 # Failure Handling
 
-If the connection drops:
-
-- client attempts automatic reconnect
-- frontend falls back to fetching latest data via API
+- Worker tick exceptions are caught and logged; the 30 s loop continues.
+- Finnhub errors result in the symbol being skipped for that tick (no partial broadcast).
+- Client disconnects are handled automatically by SignalR group membership cleanup.
+- Frontend should use `withAutomaticReconnect()` and fall back to a REST price fetch on initial load.
 
 ---
 
 # Future Improvements
 
-Possible enhancements:
-
-- live trade execution updates
-- websocket compression
-- event throttling for high-frequency updates
+- Portfolio value recalculation broadcast (`PortfolioUpdated` event) once live prices power `PortfolioMetricsService`.
+- Watchlist price updates once the watchlists feature is implemented.
+- Event throttling or diff-only broadcasting for high-frequency market hours.
+- WebSocket compression for connections with many subscribed symbols.

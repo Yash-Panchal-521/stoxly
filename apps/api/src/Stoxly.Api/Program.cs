@@ -1,6 +1,15 @@
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Stoxly.Api;
+using Stoxly.Api.BackgroundServices;
 using Stoxly.Api.Configurations;
 using Stoxly.Api.Data;
+using Stoxly.Api.Hubs;
+using Stoxly.Api.MarketData.Caching;
+using Stoxly.Api.MarketData.Clients;
+using Stoxly.Api.MarketData.Interfaces;
+using Stoxly.Api.MarketData.Services;
 using Stoxly.Api.Middleware;
 using Stoxly.Api.Repositories;
 using Stoxly.Api.Services;
@@ -18,10 +27,42 @@ builder.Services.AddScoped<IPortfolioRepository, PortfolioRepository>();
 builder.Services.AddScoped<IPortfolioService, PortfolioService>();
 builder.Services.AddScoped<ITransactionRepository, TransactionRepository>();
 builder.Services.AddScoped<ITransactionService, TransactionService>();
+builder.Services.AddScoped<ISymbolRepository, SymbolRepository>();
 builder.Services.AddSingleton<IFifoEngine, FifoEngine>();
 builder.Services.AddScoped<IHoldingsService, HoldingsService>();
 builder.Services.AddScoped<IPortfolioMetricsService, PortfolioMetricsService>();
 builder.Services.AddScoped<IMarketPriceService, StubMarketPriceService>();
+
+// ── MarketData module ─────────────────────────────────────────────────────────
+builder.Services.Configure<FinnhubOptions>(
+    builder.Configuration.GetSection(FinnhubOptions.SectionName));
+
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    options.Configuration = builder.Configuration.GetConnectionString("Redis");
+});
+
+builder.Services.AddHttpClient<IFinnhubClient, FinnhubClient>();
+builder.Services.AddSingleton<IMarketDataCache, RedisMarketDataCache>();
+builder.Services.AddScoped<IMarketDataService, MarketDataService>();
+
+// ── Real-time ─────────────────────────────────────────────────────────────────
+builder.Services.AddSignalR();
+builder.Services.AddHostedService<PriceUpdateWorker>();
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddPolicy(RateLimitPolicies.MarketSearch, context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 30,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+});
 
 builder.Services.AddControllers()
     .AddJsonOptions(opts =>
@@ -52,9 +93,11 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors();
+app.UseRateLimiter();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.UseMiddleware<FirebaseAuthMiddleware>();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHub<PriceHub>("/hubs/prices");
 
 app.Run();
