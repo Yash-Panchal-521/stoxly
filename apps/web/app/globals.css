@@ -69,8 +69,8 @@
   html.light {
     /* ── Token overrides ── */
     --background: 242 242 247; /* F2F2F7 — Apple grouped background */
-    --surface: 228 228 235;   /* E4E4EB — secondary grouped surface */
-    --card: 255 255 255;      /* white card on grey page */
+    --surface: 228 228 235; /* E4E4EB — secondary grouped surface */
+    --card: 255 255 255; /* white card on grey page */
     --text-primary: 0 0 0;
     --text-secondary: 99 99 102;
     --muted: 142 142 147;
