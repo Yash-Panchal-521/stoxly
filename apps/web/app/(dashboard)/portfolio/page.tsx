@@ -89,7 +89,20 @@ function PortfolioRow({
       <TableRow>
         <TableCell>
           <div>
-            <p className="font-semibold text-text-primary">{portfolio.name}</p>
+            <div className="flex items-center gap-2">
+              <p className="font-semibold text-text-primary">
+                {portfolio.name}
+              </p>
+              {portfolio.portfolioType === "SIMULATION" ? (
+                <span className="bg-primary/10 text-primary text-small rounded-xl px-2 py-0.5 font-medium shrink-0">
+                  Sim
+                </span>
+              ) : (
+                <span className="bg-surface text-text-secondary text-small rounded-xl px-2 py-0.5 border border-border font-medium shrink-0">
+                  Live
+                </span>
+              )}
+            </div>
             {portfolio.description && (
               <p className="text-small text-text-secondary line-clamp-1 mt-0.5">
                 {portfolio.description}
@@ -171,7 +184,20 @@ function PortfolioMobileCard({
       <div className="stoxly-card space-y-3">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <p className="font-semibold text-text-primary">{portfolio.name}</p>
+            <div className="flex items-center gap-2">
+              <p className="font-semibold text-text-primary">
+                {portfolio.name}
+              </p>
+              {portfolio.portfolioType === "SIMULATION" ? (
+                <span className="bg-primary/10 text-primary text-small rounded-xl px-2 py-0.5 font-medium shrink-0">
+                  Sim
+                </span>
+              ) : (
+                <span className="bg-surface text-text-secondary text-small rounded-xl px-2 py-0.5 border border-border font-medium shrink-0">
+                  Live
+                </span>
+              )}
+            </div>
             {portfolio.description && (
               <p className="text-small text-text-secondary line-clamp-1 mt-0.5">
                 {portfolio.description}

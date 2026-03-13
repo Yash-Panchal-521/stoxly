@@ -1,6 +1,6 @@
 # Stoxly — Project Progress
 
-> Last updated: March 13, 2026
+> Last updated: March 13, 2026 — Sprint 1 complete
 
 ---
 
@@ -38,6 +38,9 @@
 | Settings Page               | ✅ Complete (profile, password change, account deletion)    |
 | Mobile Responsive Layout    | ✅ Complete (hamburger + slide-in drawer sidebar)           |
 | Asset Allocation Chart      | ✅ Complete (donut chart + bar legend on portfolio detail)  |
+| Simulation Portfolio System | ✅ Complete (create, reset, cash balance, portfolio type)   |
+| Virtual Trading Engine      | ✅ Complete (market buy/sell, FIFO, cash management, notes) |
+| Portfolio Performance Chart | ✅ Complete (daily value snapshots via Yahoo Finance)       |
 
 ---
 
@@ -158,6 +161,26 @@ A cross-portfolio transaction history page at `/trades`. Fetches all user transa
 
 `EditTransactionDialog` allows editing `fee` and `notes` on an existing transaction. Pre-fills both fields from the current transaction. Calls `PATCH /api/transactions/{id}`. Accessible via an Edit button in `TransactionList` (portfolio detail page).
 
+### Simulation Portfolio System (Sprint 1)
+
+Users can create a simulation portfolio funded with virtual cash. The full SS-01 sprint is complete:
+
+- **Create** (`POST /api/simulation/portfolio`) — configurable starting cash (0.01 to $10M).
+- **View** (`GET /api/simulation/portfolio`) — returns current cash balance and portfolio state.
+- **Reset** (`POST /api/simulation/reset`) — restores cash to `startingCash` and soft-deletes all trades.
+- **Portfolio type differentiation** — `TRACKING` vs `SIMULATION` stored in `portfolio_type` column (migration `20260313120000_AddSimulationFieldsToPortfolio`).
+
+### Virtual Trading Engine (Sprint 1)
+
+Market buy and sell orders execute instantly at the current live price:
+
+- **Buy** (`POST /api/simulation/buy`) — deducts `quantity × price` from cash balance; rejects with `insufficient_cash` if short.
+- **Sell** (`POST /api/simulation/sell`) — adds proceeds; computes realised profit via FIFO; rejects with `insufficient_holdings` if short.
+- **Trade notes** (`PATCH /api/simulation/trades/{id}/notes`) — add or update notes on any simulation trade.
+- `SimulationTradeService` fetches the current price via `IMarketPriceService` at execution time and wraps the portfolio cash update + transaction insert in a DB transaction.
+- Frontend: `SimulationTradeForm`, `OrderConfirmationDialog`, `CashBalanceCard`, `ResetPortfolioDialog`.
+- Hooks: `useSimulationPortfolio`, `useSimulationBuy`, `useSimulationSell`.
+
 ### Dev Tooling — WSL Redis Auto-Start
 
 `stoxly.sh` auto-starts Redis with a 3-tier priority:
@@ -170,8 +193,12 @@ A cross-portfolio transaction history page at `/trades`. Fetches all user transa
 
 ## What’s Next
 
-| Feature           | Notes                                                 |
-| ----------------- | ----------------------------------------------------- |
-| Price alerts      | Notify users when a watched stock crosses a threshold |
-| CSV export        | Export transaction history to CSV                     |
-| Dividend tracking | Track dividend payments for portfolio holdings        |
+| Feature                 | Notes                                                                    |
+| ----------------------- | ------------------------------------------------------------------------ |
+| Simulation Portfolio UI | Dedicated simulation dashboard (portfolio value card, cash balance, P&L) |
+| Trading Analytics       | Win rate, best/worst trade, profit factor from simulation history        |
+| Leaderboard             | Global and monthly leaderboard ranked by total return                    |
+| Trading Journal View    | Dedicated journal UI for reviewing and filtering trades by notes         |
+| Price alerts            | Notify users when a watched stock crosses a threshold                    |
+| CSV export              | Export transaction history to CSV                                        |
+| Dividend tracking       | Track dividend payments for portfolio holdings                           |

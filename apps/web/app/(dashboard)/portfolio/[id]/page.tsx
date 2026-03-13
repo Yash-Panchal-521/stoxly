@@ -6,13 +6,16 @@ import { usePortfolio } from "@/hooks/use-portfolio";
 import { useHoldings } from "@/hooks/use-holdings";
 import { useMetrics } from "@/hooks/use-metrics";
 import { usePriceSocket } from "@/hooks/use-price-socket";
+import { useSimulationPortfolio } from "@/hooks/use-simulation-portfolio";
 import { Button } from "@/components/ui/button";
 import StatCard from "@/components/cards/StatCard";
 import DeletePortfolioDialog from "@/features/portfolios/DeletePortfolioDialog";
+import ResetPortfolioDialog from "@/features/portfolios/ResetPortfolioDialog";
 import HoldingsTable from "@/features/portfolios/HoldingsTable";
 import PerformanceChart from "@/features/portfolios/PerformanceChart";
 import AllocationChart from "@/features/portfolios/AllocationChart";
 import TransactionList from "@/features/transactions/TransactionList";
+import CashBalanceCard from "@/features/portfolios/CashBalanceCard";
 
 function formatCurrency(value: number): string {
   return value.toLocaleString("en-US", { style: "currency", currency: "USD" });
@@ -32,6 +35,8 @@ export default function PortfolioDetailPage() {
   const { data: portfolio, isLoading, isError } = usePortfolio(params.id);
   const { data: holdings } = useHoldings(params.id);
   const { data: metrics } = useMetrics(params.id);
+  const isSimulation = portfolio?.portfolioType === "SIMULATION";
+  const { data: simPortfolio } = useSimulationPortfolio();
   const symbols = useMemo(
     () =>
       [...new Set((holdings ?? []).map((h) => h.symbol))].sort((a, b) =>
@@ -41,6 +46,7 @@ export default function PortfolioDetailPage() {
   );
   const prices = usePriceSocket(symbols);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [resetOpen, setResetOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -77,12 +83,32 @@ export default function PortfolioDetailPage() {
           >
             &larr; Back to Dashboard
           </button>
-          <h1 className="text-h1">{portfolio.name}</h1>
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-h1">{portfolio.name}</h1>
+            {isSimulation ? (
+              <span className="bg-primary/10 text-primary text-small rounded-xl px-2 py-0.5 font-medium">
+                Sim
+              </span>
+            ) : (
+              <span className="bg-surface text-text-secondary text-small rounded-xl px-2 py-0.5 border border-border font-medium">
+                Live
+              </span>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <span className="rounded-lg bg-surface px-3 py-1 text-small text-text-secondary border border-border">
             {portfolio.baseCurrency}
           </span>
+          {isSimulation && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setResetOpen(true)}
+            >
+              Reset
+            </Button>
+          )}
           <Button
             variant="destructive"
             size="sm"
@@ -107,6 +133,11 @@ export default function PortfolioDetailPage() {
           Created {formatDate(portfolio.createdAt)}
         </p>
       </div>
+
+      {/* Cash Balance (Simulation only) */}
+      {isSimulation && simPortfolio && (
+        <CashBalanceCard portfolio={simPortfolio} />
+      )}
 
       {/* Metrics Strip */}
       {metrics && (
@@ -141,7 +172,7 @@ export default function PortfolioDetailPage() {
       )}
 
       {/* Transactions */}
-      <TransactionList portfolioId={portfolio.id} />
+      <TransactionList portfolioId={portfolio.id} isSimulation={isSimulation} />
 
       {/* Holdings */}
       <HoldingsTable portfolioId={portfolio.id} priceOverrides={prices} />
@@ -151,6 +182,14 @@ export default function PortfolioDetailPage() {
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
       />
+      {isSimulation && simPortfolio && (
+        <ResetPortfolioDialog
+          portfolioId={portfolio.id}
+          startingCash={simPortfolio.startingCash}
+          open={resetOpen}
+          onOpenChange={setResetOpen}
+        />
+      )}
     </div>
   );
 }

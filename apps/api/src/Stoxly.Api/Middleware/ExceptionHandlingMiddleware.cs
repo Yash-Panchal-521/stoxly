@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Stoxly.Api.Exceptions;
 
 namespace Stoxly.Api.Middleware;
 
@@ -27,6 +28,38 @@ public class ExceptionHandlingMiddleware
 
     private async Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
+        context.Response.ContentType = "application/json";
+
+        switch (exception)
+        {
+            case InsufficientCashException ex:
+                context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                await context.Response.WriteAsync(JsonSerializer.Serialize(new
+                {
+                    error = "InsufficientCash",
+                    message = ex.Message
+                }));
+                return;
+
+            case InsufficientHoldingsException ex:
+                context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                await context.Response.WriteAsync(JsonSerializer.Serialize(new
+                {
+                    error = "InsufficientHoldings",
+                    message = ex.Message
+                }));
+                return;
+
+            case PriceUnavailableException ex:
+                context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                await context.Response.WriteAsync(JsonSerializer.Serialize(new
+                {
+                    error = "PriceUnavailable",
+                    message = ex.Message
+                }));
+                return;
+        }
+
         var (statusCode, message) = exception switch
         {
             KeyNotFoundException ex => (StatusCodes.Status404NotFound, ex.Message),
@@ -40,9 +73,6 @@ public class ExceptionHandlingMiddleware
             _logger.LogError(exception, "Unhandled exception");
 
         context.Response.StatusCode = statusCode;
-        context.Response.ContentType = "application/json";
-
-        var response = new { error = message };
-        await context.Response.WriteAsync(JsonSerializer.Serialize(response));
+        await context.Response.WriteAsync(JsonSerializer.Serialize(new { error = message }));
     }
 }

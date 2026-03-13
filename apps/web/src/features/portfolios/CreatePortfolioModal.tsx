@@ -2,7 +2,10 @@
 
 import { useState, type FormEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createPortfolio } from "@/services/portfolio-service";
+import {
+  createPortfolio,
+  createSimulationPortfolio,
+} from "@/services/portfolio-service";
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
@@ -25,6 +28,8 @@ import {
 
 const CURRENCIES = ["USD", "EUR", "GBP", "JPY", "CAD", "AUD", "CHF"] as const;
 
+type PortfolioTypeOption = "SIMULATION" | "TRACKING";
+
 interface CreatePortfolioModalProps {
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
@@ -37,12 +42,34 @@ export default function CreatePortfolioModal({
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [baseCurrency, setBaseCurrency] = useState("USD");
+  const [portfolioType, setPortfolioType] =
+    useState<PortfolioTypeOption>("SIMULATION");
+  const [startingCash, setStartingCash] = useState("100000");
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const { mutate, isPending } = useMutation({
-    mutationFn: createPortfolio,
+    mutationFn: (data: {
+      type: PortfolioTypeOption;
+      name: string;
+      description?: string;
+      baseCurrency: string;
+      startingCash?: number;
+    }) => {
+      if (data.type === "SIMULATION") {
+        return createSimulationPortfolio({
+          name: data.name,
+          description: data.description,
+          startingCash: data.startingCash!,
+        });
+      }
+      return createPortfolio({
+        name: data.name,
+        description: data.description,
+        baseCurrency: data.baseCurrency,
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["portfolios"] });
       toast("Portfolio created successfully!");
@@ -57,17 +84,40 @@ export default function CreatePortfolioModal({
     setName("");
     setDescription("");
     setBaseCurrency("USD");
+    setPortfolioType("SIMULATION");
+    setStartingCash("100000");
     onOpenChange(false);
   }
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
-    mutate({
-      name: name.trim(),
-      description: description.trim() || undefined,
-      baseCurrency,
-    });
+
+    if (portfolioType === "SIMULATION") {
+      const cash = Number.parseFloat(startingCash);
+      if (Number.isNaN(cash) || cash <= 0) {
+        toast("Starting cash must be greater than zero.", "error");
+        return;
+      }
+      if (cash > 10_000_000) {
+        toast("Starting cash cannot exceed $10,000,000.", "error");
+        return;
+      }
+      mutate({
+        type: "SIMULATION",
+        name: name.trim(),
+        description: description.trim() || undefined,
+        baseCurrency,
+        startingCash: cash,
+      });
+    } else {
+      mutate({
+        type: "TRACKING",
+        name: name.trim(),
+        description: description.trim() || undefined,
+        baseCurrency,
+      });
+    }
   }
 
   return (
@@ -81,6 +131,24 @@ export default function CreatePortfolioModal({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+          {/* Portfolio Type */}
+          <div className="space-y-2">
+            <Label htmlFor="portfolio-type">Portfolio Type</Label>
+            <Select
+              value={portfolioType}
+              onValueChange={(v) => setPortfolioType(v as PortfolioTypeOption)}
+              disabled={isPending}
+            >
+              <SelectTrigger id="portfolio-type">
+                <SelectValue placeholder="Select type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="SIMULATION">Simulation</SelectItem>
+                <SelectItem value="TRACKING">Tracking</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* Portfolio Name */}
           <div className="space-y-2">
             <Label htmlFor="portfolio-name">
@@ -110,26 +178,48 @@ export default function CreatePortfolioModal({
             />
           </div>
 
-          {/* Base Currency */}
-          <div className="space-y-2">
-            <Label htmlFor="portfolio-currency">Base Currency</Label>
-            <Select
-              value={baseCurrency}
-              onValueChange={setBaseCurrency}
-              disabled={isPending}
-            >
-              <SelectTrigger id="portfolio-currency">
-                <SelectValue placeholder="Select currency" />
-              </SelectTrigger>
-              <SelectContent>
-                {CURRENCIES.map((currency) => (
-                  <SelectItem key={currency} value={currency}>
-                    {currency}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Starting Cash — only for Simulation */}
+          {portfolioType === "SIMULATION" && (
+            <div className="space-y-2">
+              <Label htmlFor="portfolio-starting-cash">
+                Starting Cash (USD) <span className="text-danger">*</span>
+              </Label>
+              <Input
+                id="portfolio-starting-cash"
+                type="number"
+                min="0.01"
+                max="10000000"
+                step="0.01"
+                placeholder="100000"
+                value={startingCash}
+                onChange={(e) => setStartingCash(e.target.value)}
+                disabled={isPending}
+              />
+            </div>
+          )}
+
+          {/* Base Currency — only for Tracking */}
+          {portfolioType === "TRACKING" && (
+            <div className="space-y-2">
+              <Label htmlFor="portfolio-currency">Base Currency</Label>
+              <Select
+                value={baseCurrency}
+                onValueChange={setBaseCurrency}
+                disabled={isPending}
+              >
+                <SelectTrigger id="portfolio-currency">
+                  <SelectValue placeholder="Select currency" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CURRENCIES.map((currency) => (
+                    <SelectItem key={currency} value={currency}>
+                      {currency}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <DialogFooter>
             <Button

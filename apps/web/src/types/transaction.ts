@@ -30,3 +30,32 @@ export interface UpdateTransactionRequest {
   fee?: number;
   notes?: string | null;
 }
+
+// Simulation trading
+
+export interface SimulationBuyRequest {
+  portfolioId: string;
+  symbol: string;
+  quantity: number;
+  notes?: string;
+}
+
+export interface SimulationSellRequest {
+  portfolioId: string;
+  symbol: string;
+  quantity: number;
+  notes?: string;
+}
+
+export interface SimulationTradeResponse {
+  transactionId: string;
+  symbol: string;
+  side: "BUY" | "SELL";
+  quantity: number;
+  price: number;
+  total: number;
+  fee: number;
+  executedAt: string;
+  remainingCashBalance: number;
+  notes: string | null;
+}

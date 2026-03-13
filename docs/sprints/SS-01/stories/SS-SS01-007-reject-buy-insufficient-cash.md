@@ -7,7 +7,7 @@
 | **Sprint**   | SS-01 — Simulation Core |
 | **Priority** | High                    |
 | **Points**   | 2                       |
-| **Status**   | To Do                   |
+| **Status**   | Done                    |
 
 ---
 

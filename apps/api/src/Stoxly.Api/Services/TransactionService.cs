@@ -1,4 +1,6 @@
+using Stoxly.Api.Data;
 using Stoxly.Api.DTOs;
+using Stoxly.Api.Exceptions;
 using Stoxly.Api.Models;
 using Stoxly.Api.Repositories;
 
@@ -6,17 +8,20 @@ namespace Stoxly.Api.Services;
 
 public class TransactionService : ITransactionService
 {
+    private readonly AppDbContext _db;
     private readonly ITransactionRepository _transactionRepository;
     private readonly IPortfolioRepository _portfolioRepository;
     private readonly ISymbolRepository _symbolRepository;
     private readonly IFifoEngine _fifoEngine;
 
     public TransactionService(
+        AppDbContext db,
         ITransactionRepository transactionRepository,
         IPortfolioRepository portfolioRepository,
         ISymbolRepository symbolRepository,
         IFifoEngine fifoEngine)
     {
+        _db = db;
         _transactionRepository = transactionRepository;
         _portfolioRepository = portfolioRepository;
         _symbolRepository = symbolRepository;
@@ -25,15 +30,18 @@ public class TransactionService : ITransactionService
 
     public async Task<TransactionResponse> CreateTransactionAsync(Guid portfolioId, string userId, CreateTransactionRequest request)
     {
-        await EnsurePortfolioBelongsToUserAsync(portfolioId, userId);
+        var portfolio = await _portfolioRepository.GetPortfolioByIdAsync(portfolioId, userId)
+            ?? throw new KeyNotFoundException($"Portfolio with id '{portfolioId}' not found.");
+
         ValidateRequest(request.Symbol, request.Quantity, request.Price, request.TradeDate);
         await EnsureSymbolExistsAsync(request.Symbol);
+
+        var symbol = request.Symbol.Trim().ToUpperInvariant();
 
         if (request.Type == TransactionType.SELL)
         {
             var existingTransactions = await _transactionRepository.GetPortfolioTransactionsAsync(portfolioId);
             var holdings = _fifoEngine.CalculateHoldings(existingTransactions);
-            var symbol = request.Symbol.Trim().ToUpperInvariant();
             var holding = holdings.FirstOrDefault(h => h.Symbol == symbol);
             if (holding == null || holding.Quantity < request.Quantity)
                 throw new InvalidOperationException(
@@ -44,7 +52,7 @@ public class TransactionService : ITransactionService
         var transaction = new Transaction
         {
             PortfolioId = portfolioId,
-            Symbol = request.Symbol.Trim().ToUpperInvariant(),
+            Symbol = symbol,
             Type = request.Type,
             Quantity = request.Quantity,
             Price = request.Price,
@@ -53,8 +61,35 @@ public class TransactionService : ITransactionService
             Notes = request.Notes?.Trim(),
         };
 
-        var created = await _transactionRepository.CreateTransactionAsync(transaction);
-        return MapToResponse(created);
+        if (portfolio.PortfolioType == PortfolioType.SIMULATION)
+        {
+            var totalAmount = request.Quantity * request.Price;
+            var cashBalance = portfolio.CashBalance ?? 0;
+
+            if (request.Type == TransactionType.BUY && cashBalance < totalAmount)
+                throw new InsufficientCashException(required: totalAmount, available: cashBalance);
+
+            portfolio.CashBalance = request.Type == TransactionType.BUY
+                ? cashBalance - totalAmount
+                : cashBalance + totalAmount;
+            portfolio.UpdatedAt = DateTime.UtcNow;
+
+            await using var dbTransaction = await _db.Database.BeginTransactionAsync();
+            try
+            {
+                var created = await _transactionRepository.CreateTransactionAsync(transaction);
+                await dbTransaction.CommitAsync();
+                return MapToResponse(created);
+            }
+            catch
+            {
+                await dbTransaction.RollbackAsync();
+                throw;
+            }
+        }
+
+        var result = await _transactionRepository.CreateTransactionAsync(transaction);
+        return MapToResponse(result);
     }
 
     public async Task<List<TransactionResponse>> GetPortfolioTransactionsAsync(Guid portfolioId, string userId)

@@ -7,6 +7,7 @@ import {
   getAllTransactions,
   getPortfolioTransactions,
   updateTransaction,
+  updateTradeNote,
 } from "@/services/transaction-service";
 import type {
   CreateTransactionRequest,
@@ -40,6 +41,15 @@ export function useCreateTransaction(portfolioId: string) {
       queryClient.invalidateQueries({
         queryKey: ["portfolios", portfolioId, "holdings"],
       });
+      queryClient.invalidateQueries({
+        queryKey: ["portfolios", portfolioId, "metrics"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["portfolios", portfolioId, "performance"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["simulation", "portfolio"],
+      });
     },
   });
 }
@@ -58,6 +68,18 @@ export function useUpdateTransaction(portfolioId: string) {
       queryClient.invalidateQueries({
         queryKey: ["transactions", portfolioId],
       });
+      queryClient.invalidateQueries({
+        queryKey: ["portfolios", portfolioId, "holdings"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["portfolios", portfolioId, "metrics"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["portfolios", portfolioId, "performance"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["simulation", "portfolio"],
+      });
     },
   });
 }
@@ -73,6 +95,28 @@ export function useDeleteTransaction(portfolioId: string) {
       });
       queryClient.invalidateQueries({
         queryKey: ["portfolios", portfolioId, "holdings"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["portfolios", portfolioId, "metrics"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["portfolios", portfolioId, "performance"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["simulation", "portfolio"],
+      });
+    },
+  });
+}
+
+export function useUpdateTradeNote(portfolioId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, notes }: { id: string; notes: string | null }) =>
+      updateTradeNote(id, notes),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["transactions", portfolioId],
       });
     },
   });

@@ -136,8 +136,11 @@ components/     → shared UI components (layout, cards, shadcn wrappers)
   cards/        → StatCard and other card components
 features/
   market/       → StockSearch combobox component
-  portfolios/   → CreatePortfolioModal, DeletePortfolioDialog, RenamePortfolioDialog
-  transactions/ → AddTransactionDialog, EditTransactionDialog, TransactionList
+  portfolios/   → CreatePortfolioModal, DeletePortfolioDialog, RenamePortfolioDialog,
+                   ResetPortfolioDialog, HoldingsTable, AllocationChart,
+                   CashBalanceCard, PerformanceChart
+  transactions/ → AddTransactionDialog, EditTransactionDialog, TransactionList,
+                   SimulationTradeForm, OrderConfirmationDialog
   watchlist/    → WatchlistTable, AddToWatchlistDialog, StockDetailHero,
                    StockKeyStats, StockPriceChart
 hooks/          → TanStack Query hooks + SignalR hooks
@@ -148,8 +151,11 @@ hooks/          → TanStack Query hooks + SignalR hooks
                              useCreateTransaction, useUpdateTransaction,
                              useDeleteTransaction
   use-performance.ts
-  use-price-socket.ts     → SignalR subscription hook (live price overrides)
   use-metrics.ts          → TanStack Query hook for /metrics endpoint
+  use-price-socket.ts     → SignalR subscription hook (live price overrides)
+  use-simulation-portfolio.ts → useSimulationPortfolio (TanStack Query, 30 s stale)
+  use-simulation-trade.ts     → useSimulationBuy, useSimulationSell (mutations +
+                                 cache invalidation for portfolio, holdings, transactions)
   use-watchlist.ts        → TanStack Query hooks for watchlist CRUD
   use-stock-detail.ts     → hooks for live stock price + chart data
 lib/            → api-client, firebase init, utils, signalr.ts
@@ -166,10 +172,12 @@ app/
     dashboard/          → main dashboard (stat cards, portfolios, watchlist overview,
                            recent transactions)
     portfolio/          → portfolio management table (rename, delete, live metrics per row)
-    portfolio/[id]/     → portfolio detail (holdings, metrics strip, transactions)
+    portfolio/[id]/     → portfolio detail (holdings, metrics strip, performance chart,
+                           allocation chart, transactions, simulation trade form)
     watchlist/          → watchlist table with live SignalR prices
     watchlist/[symbol]/ → stock detail screen (hero, key stats, price chart)
-    trades/             → cross-portfolio transaction history (portfolio filter)
+    trades/             → cross-portfolio transaction history (portfolio filter, pagination)
+    settings/           → account settings (display name, password change, delete account)
   login/                → sign-in page
   register/             → sign-up page
   forgot-password/      → password reset request
@@ -209,9 +217,12 @@ Backend folder structure under `apps/api/src/Stoxly.Api/`:
 Controllers/          → thin HTTP handlers
 Services/             → business logic
   PortfolioService
+  SimulationPortfolioService (portfolio reset, virtual cash management)
+  SimulationTradeService     (buy/sell execution, cash deduction, FIFO P&L)
   HoldingsService        (enriches holdings with live prices via IMarketPriceService)
   TransactionService
   PortfolioMetricsService (computes metrics with live prices via IMarketPriceService)
+  PortfolioPerformanceService (daily value snapshots via Yahoo Finance historical prices)
   WatchlistService       (watchlist CRUD, enriches items with live prices)
   IMarketPriceService    (abstraction over real-time price lookup)
   LiveMarketPriceService (production impl — delegates to IMarketDataService)

@@ -16,11 +16,29 @@ function formatDate(dateString: string): string {
   });
 }
 
+function PortfolioTypeBadge({ type }: Readonly<{ type: string }>) {
+  if (type === "SIMULATION") {
+    return (
+      <span className="bg-primary/10 text-primary text-small rounded-xl px-2 py-0.5 font-medium">
+        Sim
+      </span>
+    );
+  }
+  return (
+    <span className="bg-surface text-text-secondary text-small rounded-xl px-2 py-0.5 border border-border font-medium">
+      Live
+    </span>
+  );
+}
+
 export default function PortfolioCard({ portfolio }: PortfolioCardProps) {
   return (
     <div className="stoxly-card flex flex-col justify-between gap-4">
       <div className="space-y-2">
-        <h3 className="text-h3 truncate">{portfolio.name}</h3>
+        <div className="flex items-center gap-2">
+          <h3 className="text-h3 truncate">{portfolio.name}</h3>
+          <PortfolioTypeBadge type={portfolio.portfolioType} />
+        </div>
         {portfolio.description && (
           <p className="text-body text-text-secondary line-clamp-2">
             {portfolio.description}

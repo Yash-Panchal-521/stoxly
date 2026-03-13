@@ -28,4 +28,10 @@ public interface IMarketDataService
     /// Wraps <see cref="GetDailyClosesAsync"/> with structured logging and graceful error handling.
     /// </summary>
     Task<StockHistoricalPriceDto?> GetHistoricalPriceAsync(string symbol, DateOnly date);
+
+    /// <summary>
+    /// Returns hourly close prices for a symbol between two UTC timestamps.
+    /// Data is cached for 5 minutes.
+    /// </summary>
+    Task<IReadOnlyList<IntradayPointDto>> GetIntradayClosesAsync(string symbol, DateTimeOffset from, DateTimeOffset to);
 }

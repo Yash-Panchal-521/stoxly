@@ -94,7 +94,7 @@ public sealed class MarketController : ControllerBase
         return Ok(prices);
     }
 
-    /// <summary>Returns daily closing prices for a symbol over a given range (1W, 1M, 3M, 6M, 1Y).</summary>
+    /// <summary>Returns price history for a symbol over a given range (12H, 24H, 1W, 1M, 3M, 6M, 1Y).</summary>
     [HttpGet("chart/{symbol}")]
     public async Task<IActionResult> GetChart(string symbol, [FromQuery] string range = "1M")
     {
@@ -104,10 +104,24 @@ public sealed class MarketController : ControllerBase
             return BadRequest(new { error = "Symbol contains invalid characters." });
 
         var upperRange = range.Trim().ToUpperInvariant();
-        var validRanges = new HashSet<string> { "1W", "1M", "3M", "6M", "1Y" };
+        var validRanges = new HashSet<string> { "12H", "24H", "1W", "1M", "3M", "6M", "1Y" };
         if (!validRanges.Contains(upperRange))
-            return BadRequest(new { error = "Invalid range. Valid values: 1W, 1M, 3M, 6M, 1Y." });
+            return BadRequest(new { error = "Invalid range. Valid values: 12H, 24H, 1W, 1M, 3M, 6M, 1Y." });
 
+        // Intraday ranges — hourly data
+        if (upperRange is "12H" or "24H")
+        {
+            var hours = upperRange == "12H" ? 12 : 24;
+            var toUtc = DateTimeOffset.UtcNow;
+            var fromUtc = toUtc.AddHours(-hours);
+            var intradayPoints = await _marketDataService.GetIntradayClosesAsync(sym, fromUtc, toUtc);
+            var intradayChart = intradayPoints
+                .Select(p => new ChartPointDto(p.Timestamp, p.Price))
+                .ToList();
+            return Ok(new StockChartDto(sym, upperRange, intradayChart));
+        }
+
+        // Daily ranges
         var to = DateOnly.FromDateTime(DateTime.UtcNow);
         var from = upperRange switch
         {

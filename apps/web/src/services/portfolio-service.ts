@@ -1,10 +1,12 @@
 import { apiGet, apiPost, apiPatch, apiDelete } from "@/lib/api-client";
 import type {
   CreatePortfolioRequest,
+  CreateSimulationPortfolioRequest,
   HoldingDto,
   PerformanceDataPoint,
   PortfolioMetricsDto,
   PortfolioResponse,
+  SimulationPortfolioResponse,
   UpdatePortfolioRequest,
 } from "@/types/portfolio";
 
@@ -14,6 +16,20 @@ export async function createPortfolio(
   data: CreatePortfolioRequest,
 ): Promise<PortfolioResponse> {
   return apiPost<PortfolioResponse>(BASE_PATH, data);
+}
+
+export async function createSimulationPortfolio(
+  data: CreateSimulationPortfolioRequest,
+): Promise<PortfolioResponse> {
+  return apiPost<PortfolioResponse>("/simulation/portfolio", data);
+}
+
+export async function getSimulationPortfolio(): Promise<SimulationPortfolioResponse> {
+  return apiGet<SimulationPortfolioResponse>("/simulation/portfolio");
+}
+
+export async function resetSimulationPortfolio(): Promise<SimulationPortfolioResponse> {
+  return apiPost<SimulationPortfolioResponse>("/simulation/reset", {});
 }
 
 export async function getUserPortfolios(): Promise<PortfolioResponse[]> {

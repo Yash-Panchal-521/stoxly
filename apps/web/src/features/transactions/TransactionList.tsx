@@ -4,6 +4,7 @@ import { useState } from "react";
 import {
   useTransactions,
   useDeleteTransaction,
+  useUpdateTradeNote,
 } from "@/hooks/use-transactions";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -47,21 +48,45 @@ function formatQuantity(value: number): string {
 interface TransactionRowProps {
   transaction: TransactionResponse;
   portfolioId: string;
+  isSimulation?: boolean;
 }
 
 function TransactionTableRow({
   transaction,
   portfolioId,
+  isSimulation,
 }: TransactionRowProps) {
   const { toast } = useToast();
   const { mutate: del, isPending } = useDeleteTransaction(portfolioId);
+  const { mutate: saveNote, isPending: isSavingNote } =
+    useUpdateTradeNote(portfolioId);
   const [editOpen, setEditOpen] = useState(false);
+  const [noteOpen, setNoteOpen] = useState(false);
+  const [draftNote, setDraftNote] = useState("");
 
   function handleDelete() {
     del(transaction.id, {
       onSuccess: () => toast("Transaction deleted", "success"),
       onError: (err) => toast(err.message || "Failed to delete", "error"),
     });
+  }
+
+  function openNote() {
+    setDraftNote(transaction.notes ?? "");
+    setNoteOpen(true);
+  }
+
+  function handleSaveNote() {
+    saveNote(
+      { id: transaction.id, notes: draftNote.trim() || null },
+      {
+        onSuccess: () => {
+          setNoteOpen(false);
+          toast("Note saved", "success");
+        },
+        onError: (err) => toast(err.message || "Failed to save note", "error"),
+      },
+    );
   }
 
   const isBuy = transaction.type === "BUY";
@@ -95,6 +120,20 @@ function TransactionTableRow({
         </TableCell>
         <TableCell className="text-right">
           <div className="flex items-center justify-end gap-3">
+            {isSimulation && (
+              <button
+                onClick={openNote}
+                className={`text-small transition-all duration-150 ease-in-out ${
+                  transaction.notes
+                    ? "text-primary hover:text-text-primary"
+                    : "text-muted hover:text-text-secondary"
+                }`}
+                aria-label={transaction.notes ? "View/edit note" : "Add note"}
+                title={transaction.notes ?? "Add note"}
+              >
+                {transaction.notes ? "📝" : "+Note"}
+              </button>
+            )}
             <button
               onClick={() => setEditOpen(true)}
               className="text-small text-muted hover:text-text-primary transition-all duration-150 ease-in-out"
@@ -113,6 +152,45 @@ function TransactionTableRow({
           </div>
         </TableCell>
       </TableRow>
+
+      {/* Inline note editor row */}
+      {noteOpen && (
+        <TableRow>
+          <TableCell colSpan={7} className="pb-3 pt-1">
+            <div className="space-y-2">
+              <textarea
+                className="stoxly-input w-full resize-none text-small"
+                rows={2}
+                placeholder="Why did you make this trade? (optional)"
+                value={draftNote}
+                onChange={(e) => setDraftNote(e.target.value)}
+              />
+              <p className="text-small text-right text-muted">
+                {draftNote.length} / 500
+              </p>
+              <div className="flex items-center gap-2 justify-end">
+                <button
+                  type="button"
+                  className="btn-ghost text-small h-7 px-3"
+                  onClick={() => setNoteOpen(false)}
+                  disabled={isSavingNote}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn-primary text-small h-7 px-3"
+                  onClick={handleSaveNote}
+                  disabled={isSavingNote || draftNote.length > 500}
+                >
+                  {isSavingNote ? "Saving…" : "Save Note"}
+                </button>
+              </div>
+            </div>
+          </TableCell>
+        </TableRow>
+      )}
+
       <EditTransactionDialog
         transaction={transaction}
         portfolioId={portfolioId}
@@ -126,16 +204,39 @@ function TransactionTableRow({
 function TransactionMobileCard({
   transaction,
   portfolioId,
+  isSimulation,
 }: TransactionRowProps) {
   const { toast } = useToast();
   const { mutate: del, isPending } = useDeleteTransaction(portfolioId);
+  const { mutate: saveNote, isPending: isSavingNote } =
+    useUpdateTradeNote(portfolioId);
   const [editOpen, setEditOpen] = useState(false);
+  const [noteOpen, setNoteOpen] = useState(false);
+  const [draftNote, setDraftNote] = useState("");
 
   function handleDelete() {
     del(transaction.id, {
       onSuccess: () => toast("Transaction deleted", "success"),
       onError: (err) => toast(err.message || "Failed to delete", "error"),
     });
+  }
+
+  function openNote() {
+    setDraftNote(transaction.notes ?? "");
+    setNoteOpen(true);
+  }
+
+  function handleSaveNote() {
+    saveNote(
+      { id: transaction.id, notes: draftNote.trim() || null },
+      {
+        onSuccess: () => {
+          setNoteOpen(false);
+          toast("Note saved", "success");
+        },
+        onError: (err) => toast(err.message || "Failed to save note", "error"),
+      },
+    );
   }
 
   const isBuy = transaction.type === "BUY";
@@ -169,6 +270,19 @@ function TransactionMobileCard({
             {formatCurrency(transaction.price)}
           </span>
           <div className="flex items-center gap-3">
+            {isSimulation && (
+              <button
+                onClick={openNote}
+                className={`text-small transition-all duration-150 ease-in-out ${
+                  transaction.notes
+                    ? "text-primary hover:text-text-primary"
+                    : "text-muted hover:text-text-secondary"
+                }`}
+                aria-label={transaction.notes ? "View/edit note" : "Add note"}
+              >
+                {transaction.notes ? "📝" : "+Note"}
+              </button>
+            )}
             <button
               onClick={() => setEditOpen(true)}
               className="text-small text-muted hover:text-text-primary transition-all duration-150 ease-in-out"
@@ -186,6 +300,40 @@ function TransactionMobileCard({
             </button>
           </div>
         </div>
+
+        {/* Inline note editor */}
+        {noteOpen && (
+          <div className="mt-3 space-y-2 border-t border-border pt-3">
+            <textarea
+              className="stoxly-input w-full resize-none text-small"
+              rows={2}
+              placeholder="Why did you make this trade? (optional)"
+              value={draftNote}
+              onChange={(e) => setDraftNote(e.target.value)}
+            />
+            <p className="text-small text-right text-muted">
+              {draftNote.length} / 500
+            </p>
+            <div className="flex items-center gap-2 justify-end">
+              <button
+                type="button"
+                className="btn-ghost text-small h-7 px-3"
+                onClick={() => setNoteOpen(false)}
+                disabled={isSavingNote}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-primary text-small h-7 px-3"
+                onClick={handleSaveNote}
+                disabled={isSavingNote || draftNote.length > 500}
+              >
+                {isSavingNote ? "Saving…" : "Save Note"}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
       <EditTransactionDialog
         transaction={transaction}
@@ -199,9 +347,13 @@ function TransactionMobileCard({
 
 interface TransactionListProps {
   portfolioId: string;
+  isSimulation?: boolean;
 }
 
-export default function TransactionList({ portfolioId }: TransactionListProps) {
+export default function TransactionList({
+  portfolioId,
+  isSimulation,
+}: TransactionListProps) {
   const {
     data: transactions,
     isLoading,
@@ -250,6 +402,7 @@ export default function TransactionList({ portfolioId }: TransactionListProps) {
                 key={tx.id}
                 transaction={tx}
                 portfolioId={portfolioId}
+                isSimulation={isSimulation}
               />
             ))}
           </div>
@@ -274,6 +427,7 @@ export default function TransactionList({ portfolioId }: TransactionListProps) {
                     key={tx.id}
                     transaction={tx}
                     portfolioId={portfolioId}
+                    isSimulation={isSimulation}
                   />
                 ))}
               </TableBody>

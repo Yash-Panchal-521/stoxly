@@ -1,8 +1,13 @@
+export type PortfolioType = "SIMULATION" | "TRACKING";
+
 export interface PortfolioResponse {
   id: string;
   name: string;
   description: string | null;
   baseCurrency: string;
+  portfolioType: PortfolioType;
+  startingCash: number | null;
+  cashBalance: number | null;
   createdAt: string;
 }
 
@@ -10,6 +15,12 @@ export interface CreatePortfolioRequest {
   name: string;
   description?: string;
   baseCurrency?: string;
+}
+
+export interface CreateSimulationPortfolioRequest {
+  name: string;
+  description?: string;
+  startingCash: number;
 }
 
 export interface UpdatePortfolioRequest {
@@ -38,4 +49,15 @@ export interface PortfolioMetricsDto {
 export interface PerformanceDataPoint {
   date: string;
   value: number;
+}
+
+export interface SimulationPortfolioResponse {
+  id: string;
+  name: string;
+  startingCash: number;
+  cashBalance: number;
+  cashUsed: number;
+  cashUsedPercent: number;
+  portfolioType: PortfolioType;
+  createdAt: string;
 }

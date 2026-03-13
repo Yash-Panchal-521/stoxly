@@ -70,4 +70,12 @@ public class TransactionRepository : ITransactionRepository
         transaction.DeletedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
     }
+
+    public async Task SoftDeleteAllByPortfolioAsync(Guid portfolioId)
+    {
+        var now = DateTime.UtcNow;
+        await _db.Transactions
+            .Where(t => t.PortfolioId == portfolioId && t.DeletedAt == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(t => t.DeletedAt, now));
+    }
 }

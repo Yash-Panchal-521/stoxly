@@ -12,4 +12,5 @@ public interface ITransactionRepository
     Task<Transaction?> GetTransactionByIdAsync(Guid id, Guid portfolioId);
     Task<Transaction> UpdateTransactionAsync(Transaction transaction);
     Task SoftDeleteTransactionAsync(Guid id, Guid portfolioId);
+    Task SoftDeleteAllByPortfolioAsync(Guid portfolioId);
 }

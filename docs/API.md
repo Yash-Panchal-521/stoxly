@@ -181,6 +181,25 @@ Response `200 OK`
 
 ---
 
+## Get Portfolio Performance
+
+GET `/api/portfolios/{portfolioId}/performance`
+
+Requires a valid Firebase ID token.
+
+Returns daily portfolio value snapshots from the first transaction date to today. Computed by replaying historical prices (Yahoo Finance, Redis-cached 24 h, fill-forward across weekends/holidays) against holdings at each date.
+
+Response `200 OK`
+
+```json
+[
+  { "date": "2026-01-15", "value": 98540.25 },
+  { "date": "2026-01-16", "value": 99102.1 }
+]
+```
+
+---
+
 # Transactions API
 
 ## Get All User Transactions
@@ -470,6 +489,155 @@ Returns `400 Bad Request` if `symbol` contains invalid characters or `range` is 
 
 ---
 
+# Simulation API
+
+All endpoints require a valid Firebase ID token.
+
+## Get Simulation Portfolio
+
+GET `/api/simulation/portfolio`
+
+Returns the authenticated user's simulation portfolio including current cash balance.
+
+Response `200 OK`
+
+```json
+{
+  "id": "uuid",
+  "name": "My Paper Portfolio",
+  "startingCash": 100000.0,
+  "cashBalance": 72340.5,
+  "portfolioType": "SIMULATION",
+  "createdAt": "2026-03-13T12:00:00Z"
+}
+```
+
+Returns `404 Not Found` if the user has not created a simulation portfolio.
+
+---
+
+## Create Simulation Portfolio
+
+POST `/api/simulation/portfolio`
+
+Request
+
+```json
+{
+  "name": "My Paper Portfolio",
+  "startingCash": 100000.0
+}
+```
+
+Validation rules:
+
+- `name` — required, max 120 characters
+- `startingCash` — required, between 0.01 and 10,000,000
+
+Response `201 Created` — same shape as GET.
+
+---
+
+## Reset Simulation Portfolio
+
+POST `/api/simulation/reset`
+
+Soft-deletes all transactions and restores `cashBalance` to `startingCash`.
+
+Response `200 OK` — updated simulation portfolio.
+
+Returns `404 Not Found` if no simulation portfolio exists.
+
+---
+
+## Execute Buy Order
+
+POST `/api/simulation/buy`
+
+Executes a market buy at the current live price. Deducts `quantity × price` from `cashBalance`.
+
+Request
+
+```json
+{
+  "portfolioId": "uuid",
+  "symbol": "AAPL",
+  "quantity": 10,
+  "notes": "Optional trade note"
+}
+```
+
+Validation rules:
+
+- `portfolioId` — must be a simulation portfolio owned by the authenticated user
+- `symbol` — must exist in the `symbols` table
+- `quantity` — decimal, > 0
+- Cash balance must be sufficient for the total cost
+
+Response `201 Created`
+
+```json
+{
+  "transactionId": "uuid",
+  "symbol": "AAPL",
+  "quantity": 10,
+  "price": 211.45,
+  "total": 2114.5,
+  "cashBalanceAfter": 70226.0
+}
+```
+
+Returns `400 Bad Request` with `insufficient_cash` error code if cash balance is too low.
+
+---
+
+## Execute Sell Order
+
+POST `/api/simulation/sell`
+
+Executes a market sell at the current live price. Adds proceeds to `cashBalance`. Realized profit computed via FIFO.
+
+Request
+
+```json
+{
+  "portfolioId": "uuid",
+  "symbol": "AAPL",
+  "quantity": 5,
+  "notes": "Optional trade note"
+}
+```
+
+Validation rules:
+
+- Same as buy; additionally the user must hold at least `quantity` shares of the symbol.
+
+Response `201 Created` — same shape as buy, includes `realizedProfit`.
+
+Returns `400 Bad Request` with `insufficient_holdings` error code if shares are insufficient.
+
+---
+
+## Update Trade Notes
+
+PATCH `/api/simulation/trades/{transactionId}/notes`
+
+Updates the note on an existing simulation trade. Pass `null` or empty string to clear.
+
+Request
+
+```json
+{
+  "notes": "AI boom expected"
+}
+```
+
+Response `204 No Content`
+
+Returns `404 Not Found` if the transaction does not exist or belongs to another user.
+
+---
+
 # Watchlist API
 
 All endpoints require a valid Firebase ID token.
@@ -603,332 +771,3 @@ Common status codes:
 - DTOs for all request and response shapes
 - No direct entity exposure
 - Consistent error format via `ExceptionHandlingMiddleware`
-
----
-
-# Authentication
-
-Authentication is handled by **Firebase Authentication**.
-
-The Next.js frontend signs users in with Firebase and receives a Firebase ID token. That token must be sent with every protected API request.
-
-Example header:
-
-```
-Authorization: Bearer <firebase-id-token>
-```
-
-API rules:
-
-- the backend does not expose login or registration endpoints
-- the backend never manages passwords
-- ASP.NET Core only verifies Firebase JWT tokens
-- protected endpoints use verified Firebase claims, especially `uid` and `email`, to resolve the Stoxly user record
-
----
-
-# Portfolio API
-
-## Get User Portfolios
-
-GET `/api/portfolios`
-
-Returns all portfolios owned by the authenticated user.
-
-Requires a valid Firebase ID token in the Authorization header.
-
-Response
-
-```
-[
-  {
-    "id": "uuid",
-    "name": "Main Portfolio",
-    "createdAt": "timestamp"
-  }
-]
-```
-
----
-
-## Create Portfolio
-
-POST `/api/portfolios`
-
-Requires a valid Firebase ID token in the Authorization header.
-
-Request
-
-```
-{
-  "name": "Long Term Portfolio"
-}
-```
-
-Response
-
-```
-{
-  "id": "uuid",
-  "name": "Long Term Portfolio"
-}
-```
-
----
-
-## Get Portfolio Details
-
-GET `/api/portfolios/{portfolioId}`
-
-Requires a valid Firebase ID token in the Authorization header.
-
-Response
-
-```
-{
-  "id": "uuid",
-  "name": "Main Portfolio",
-  "holdings": []
-}
-```
-
----
-
-# Holdings API
-
-## Get Holdings
-
-GET `/api/portfolios/{portfolioId}/holdings`
-
-Requires a valid Firebase ID token in the Authorization header.
-
-Response
-
-```
-[
-  {
-    "stockSymbol": "AAPL",
-    "quantity": 10,
-    "averagePrice": 150
-  }
-]
-```
-
----
-
-# Transactions API
-
-## Buy Stock
-
-POST `/api/trades/buy`
-
-Requires a valid Firebase ID token in the Authorization header.
-
-Request
-
-```
-{
-  "portfolioId": "uuid",
-  "stockSymbol": "AAPL",
-  "quantity": 10,
-  "price": 150
-}
-```
-
----
-
-## Sell Stock
-
-POST `/api/trades/sell`
-
-Requires a valid Firebase ID token in the Authorization header.
-
-Request
-
-```
-{
-  "portfolioId": "uuid",
-  "stockSymbol": "AAPL",
-  "quantity": 5,
-  "price": 155
-}
-```
-
----
-
-## Transaction History
-
-GET `/api/portfolios/{portfolioId}/transactions`
-
-Requires a valid Firebase ID token in the Authorization header.
-
-Response
-
-```
-[
-  {
-    "type": "BUY",
-    "stockSymbol": "AAPL",
-    "quantity": 10,
-    "price": 150,
-    "executedAt": "timestamp"
-  }
-]
-```
-
----
-
-# Watchlist API
-
-## Get Watchlist
-
-GET `/api/watchlist`
-
-Requires a valid Firebase ID token in the Authorization header.
-
-Response
-
-```
-[
-  {
-    "symbol": "AAPL",
-    "companyName": "Apple Inc."
-  }
-]
-```
-
----
-
-## Add Stock to Watchlist
-
-POST `/api/watchlist`
-
-Requires a valid Firebase ID token in the Authorization header.
-
-Request
-
-```
-{
-  "symbol": "TSLA"
-}
-```
-
----
-
-## Remove from Watchlist
-
-DELETE `/api/watchlist/{symbol}`
-
-Requires a valid Firebase ID token in the Authorization header.
-
----
-
-# Stocks API
-
-## Search Stocks
-
-GET `/api/stocks/search?q=AAPL`
-
-Requires a valid Firebase ID token in the Authorization header.
-
-Response
-
-```
-[
-  {
-    "symbol": "AAPL",
-    "companyName": "Apple Inc."
-  }
-]
-```
-
----
-
-## Get Stock Details
-
-GET `/api/stocks/{symbol}`
-
-Response
-
-```
-{
-  "symbol": "AAPL",
-  "companyName": "Apple Inc.",
-  "price": 175
-}
-```
-
----
-
-# Price History
-
-## Get Historical Prices
-
-GET `/api/stocks/{symbol}/history`
-
-Response
-
-```
-[
-  {
-    "price": 170,
-    "timestamp": "2025-01-01"
-  }
-]
-```
-
----
-
-# Real-Time Events (SignalR)
-
-SignalR hub endpoint:
-
-```
-/hubs/market
-```
-
-Events emitted by the server:
-
-priceUpdated
-
-```
-{
-  "symbol": "AAPL",
-  "price": 176
-}
-```
-
-portfolioUpdated
-
-```
-{
-  "portfolioId": "uuid",
-  "newValue": 12000
-}
-```
-
----
-
-# Error Response Format
-
-All API errors follow this structure:
-
-```
-{
-  "error": "error_code",
-  "message": "Human readable message"
-}
-```
-
----
-
-# API Design Principles
-
-The API follows these principles:
-
-- RESTful endpoints
-- clear resource naming
-- consistent response formats
-- strong typing through DTOs
-
-Controllers should remain thin and delegate logic to services.

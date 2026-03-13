@@ -154,7 +154,10 @@ export default function AddTransactionDialog({
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/75 backdrop-blur-3xl" />
 
         {/* Sheet panel */}
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-[420px] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-3xl border border-border/40 bg-surface shadow-2xl">
+        <Dialog.Content
+          className="fixed left-1/2 top-1/2 z-50 w-full max-w-[420px] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-3xl border border-border/40 bg-surface shadow-2xl"
+          onInteractOutside={(e) => e.preventDefault()}
+        >
           {/* ── Header ── */}
           <div className="relative flex items-center justify-center border-b border-border/30 px-6 py-4">
             <Dialog.Title className="text-[15px] font-semibold tracking-tight text-text-primary">

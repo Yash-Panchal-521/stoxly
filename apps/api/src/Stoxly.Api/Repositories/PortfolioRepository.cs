@@ -57,4 +57,12 @@ public class PortfolioRepository : IPortfolioRepository
         portfolio.DeletedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
     }
+
+    public async Task<Portfolio?> GetSimulationPortfolioAsync(string userId)
+    {
+        return await _db.Portfolios
+            .Where(p => p.UserId == userId && p.PortfolioType == PortfolioType.SIMULATION)
+            .AsNoTracking()
+            .FirstOrDefaultAsync();
+    }
 }

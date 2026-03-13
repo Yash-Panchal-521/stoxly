@@ -33,11 +33,40 @@ public class PortfolioService : IPortfolioService
             Description = request.Description?.Trim(),
             BaseCurrency = request.BaseCurrency,
             IsDefault = isDefault,
+            PortfolioType = PortfolioType.TRACKING,
         };
 
         // If this is being set as default, clear the previous default
         if (portfolio.IsDefault)
-            await ClearDefaultPortfolioAsync(userId, existing);
+            await ClearDefaultPortfolioAsync(existing);
+
+        var created = await _portfolioRepository.CreatePortfolioAsync(portfolio);
+        return MapToResponse(created);
+    }
+
+    public async Task<PortfolioResponse> CreateSimulationPortfolioAsync(string userId, CreateSimulationPortfolioRequest request)
+    {
+        ValidatePortfolioName(request.Name);
+
+        if (request.StartingCash <= 0)
+            throw new ArgumentException("Starting cash must be greater than zero.");
+
+        var existing = await _portfolioRepository.GetUserPortfoliosAsync(userId);
+
+        if (existing.Count >= MaxPortfoliosPerUser)
+            throw new InvalidOperationException($"Cannot create more than {MaxPortfoliosPerUser} portfolios.");
+
+        var portfolio = new Portfolio
+        {
+            UserId = userId,
+            Name = request.Name.Trim(),
+            Description = request.Description?.Trim(),
+            BaseCurrency = "USD",
+            IsDefault = false,
+            PortfolioType = PortfolioType.SIMULATION,
+            StartingCash = request.StartingCash,
+            CashBalance = request.StartingCash,
+        };
 
         var created = await _portfolioRepository.CreatePortfolioAsync(portfolio);
         return MapToResponse(created);
@@ -91,7 +120,7 @@ public class PortfolioService : IPortfolioService
             throw new ArgumentException("Portfolio name cannot exceed 120 characters.");
     }
 
-    private async Task ClearDefaultPortfolioAsync(string userId, List<Portfolio> portfolios)
+    private async Task ClearDefaultPortfolioAsync(List<Portfolio> portfolios)
     {
         var currentDefault = portfolios.FirstOrDefault(p => p.IsDefault);
         if (currentDefault is null) return;
@@ -108,6 +137,25 @@ public class PortfolioService : IPortfolioService
             Name = portfolio.Name,
             Description = portfolio.Description,
             BaseCurrency = portfolio.BaseCurrency,
+            PortfolioType = portfolio.PortfolioType.ToString(),
+            StartingCash = portfolio.StartingCash,
+            CashBalance = portfolio.CashBalance,
+            CreatedAt = portfolio.CreatedAt,
+        };
+    }
+
+    public async Task<SimulationPortfolioResponse?> GetSimulationPortfolioAsync(string userId)
+    {
+        var portfolio = await _portfolioRepository.GetSimulationPortfolioAsync(userId);
+        if (portfolio is null) return null;
+
+        return new SimulationPortfolioResponse
+        {
+            Id = portfolio.Id,
+            Name = portfolio.Name,
+            StartingCash = portfolio.StartingCash ?? 0,
+            CashBalance = portfolio.CashBalance ?? 0,
+            PortfolioType = portfolio.PortfolioType.ToString(),
             CreatedAt = portfolio.CreatedAt,
         };
     }

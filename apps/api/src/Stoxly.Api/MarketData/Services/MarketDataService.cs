@@ -159,6 +159,31 @@ public sealed class MarketDataService : IMarketDataService
         return closes;
     }
 
+    public async Task<IReadOnlyList<IntradayPointDto>> GetIntradayClosesAsync(
+        string symbol, DateTimeOffset from, DateTimeOffset to)
+    {
+        var normalised = symbol.Trim().ToUpperInvariant();
+
+        // Round from/to to the nearest hour for a stable cache key.
+        var fromHour = new DateTimeOffset(from.UtcDateTime.Year, from.UtcDateTime.Month, from.UtcDateTime.Day,
+            from.UtcDateTime.Hour, 0, 0, TimeSpan.Zero);
+        var toHour = new DateTimeOffset(to.UtcDateTime.Year, to.UtcDateTime.Month, to.UtcDateTime.Day,
+            to.UtcDateTime.Hour, 0, 0, TimeSpan.Zero);
+        var cacheKey = $"stock:intraday1h:{normalised}:{fromHour.ToUnixTimeSeconds()}:{toHour.ToUnixTimeSeconds()}";
+
+        var cached = await _cache.GetAsync<List<IntradayPointDto>>(cacheKey);
+        if (cached is not null)
+            return cached;
+
+        var points = await _yahooFinanceClient.GetHourlyClosesAsync(normalised, from, to);
+        var result = points.OrderBy(p => p.Timestamp).ToList();
+
+        if (result.Count > 0)
+            await _cache.SetAsync(cacheKey, result, TimeSpan.FromMinutes(5));
+
+        return result;
+    }
+
     private static readonly TimeSpan HistoricalPriceCacheTtl = TimeSpan.FromHours(24);
 
     public async Task<StockHistoricalPriceDto?> GetHistoricalPriceAsync(string symbol, DateOnly date)

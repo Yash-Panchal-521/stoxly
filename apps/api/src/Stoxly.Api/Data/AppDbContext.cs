@@ -27,6 +27,17 @@ public class AppDbContext : DbContext
     {
       entity.HasQueryFilter(p => p.DeletedAt == null);
 
+      entity.Property(p => p.PortfolioType)
+                .HasConversion<string>()
+                .HasMaxLength(20)
+                .HasDefaultValue(Models.PortfolioType.TRACKING);
+
+      entity.Property(p => p.StartingCash)
+                .HasPrecision(18, 4);
+
+      entity.Property(p => p.CashBalance)
+                .HasPrecision(18, 4);
+
       entity.HasOne(p => p.User)
                 .WithMany()
                 .HasForeignKey(p => p.UserId)

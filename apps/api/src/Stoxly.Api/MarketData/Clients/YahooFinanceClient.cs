@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
+using Stoxly.Api.MarketData.DTOs;
 
 namespace Stoxly.Api.MarketData.Clients;
 
@@ -107,6 +108,73 @@ public sealed class YahooFinanceClient : IYahooFinanceClient
             .FirstOrDefault();
 
         return bestDate == default ? null : closes[bestDate];
+    }
+
+    public async Task<IReadOnlyList<IntradayPointDto>> GetHourlyClosesAsync(
+        string symbol, DateTimeOffset from, DateTimeOffset to)
+    {
+        var period1 = from.ToUnixTimeSeconds();
+        var period2 = to.ToUnixTimeSeconds();
+        var url = $"{BaseUrl}/{Uri.EscapeDataString(symbol)}?interval=1h&period1={period1}&period2={period2}";
+
+        _logger.LogInformation(
+            "Fetching Yahoo Finance hourly closes for {Symbol} from {From} to {To}",
+            symbol, from, to);
+
+        using var httpResponse = await _httpClient.GetAsync(url);
+
+        if (!httpResponse.IsSuccessStatusCode)
+        {
+            _logger.LogWarning(
+                "Yahoo Finance returned {StatusCode} for {Symbol} (hourly)",
+                (int)httpResponse.StatusCode, symbol);
+            return [];
+        }
+
+        YahooChartResponse? response;
+        try
+        {
+            response = await httpResponse.Content.ReadFromJsonAsync<YahooChartResponse>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to deserialise Yahoo Finance hourly response for {Symbol}", symbol);
+            return [];
+        }
+
+        var chartResult = response?.Chart?.Result;
+        if (chartResult is null || chartResult.Count == 0)
+        {
+            _logger.LogWarning("Yahoo Finance returned no hourly chart data for {Symbol}", symbol);
+            return [];
+        }
+
+        var result = chartResult[0];
+        var timestamps = result.Timestamps;
+        var closes = result.Indicators?.Quote?.FirstOrDefault()?.Close;
+
+        if (timestamps is null || closes is null || timestamps.Count != closes.Count)
+        {
+            _logger.LogWarning(
+                "Yahoo Finance returned mismatched or empty hourly timestamps/closes for {Symbol}", symbol);
+            return [];
+        }
+
+        var points = new List<IntradayPointDto>(timestamps.Count);
+        for (var i = 0; i < timestamps.Count; i++)
+        {
+            if (closes[i] is null)
+                continue;
+
+            var ts = DateTimeOffset.FromUnixTimeSeconds(timestamps[i]);
+            points.Add(new IntradayPointDto(ts.UtcDateTime.ToString("o"), closes[i]!.Value));
+        }
+
+        _logger.LogInformation(
+            "Yahoo Finance returned {Count} hourly points for {Symbol}",
+            points.Count, symbol);
+
+        return points;
     }
 }
 

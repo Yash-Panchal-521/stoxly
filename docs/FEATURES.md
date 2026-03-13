@@ -29,11 +29,12 @@ Users can manage investment portfolios.
 
 Capabilities:
 
-- create portfolio
+- create portfolio (tracking or simulation)
 - rename portfolio
 - delete portfolio
-- view portfolio summary
+- view portfolio summary with live metrics (portfolio value, total invested, realized/unrealized P&L)
 - manage multiple portfolios
+- view dedicated portfolio management table at `/portfolio` with per-row live value and P&L
 
 ---
 
@@ -67,15 +68,131 @@ Each trade creates a transaction record and updates portfolio holdings.
 
 ## Transaction History
 
-Users can view a complete history of trades.
+Users can view a complete history of trades at `/trades`.
 
 Information displayed:
 
 - stock symbol
-- transaction type (buy or sell)
+- transaction type (buy or sell, colour-coded badge)
 - quantity
 - trade price
-- execution date
+- total value
+- trade date
+- portfolio name (cross-portfolio view)
+- notes
+
+Capabilities:
+
+- filter by portfolio
+- paginated (25 per page)
+- edit fee and notes on existing transactions via `EditTransactionDialog`
+- delete transactions
+- portfolio name is a clickable link to the portfolio detail page
+
+---
+
+## Simulation Portfolio System
+
+Users can create a portfolio funded with **virtual cash** for paper trading. No real money is involved.
+
+Capabilities:
+
+- create simulation portfolio with a configurable starting cash balance (up to $10,000,000)
+- view current cash balance
+- reset portfolio — restores cash to starting amount and soft-deletes all trades
+- portfolio type displayed throughout the UI (`SIMULATION` vs `TRACKING`)
+
+Backend:
+
+- `POST /api/simulation/portfolio` — create
+- `GET /api/simulation/portfolio` — fetch current state
+- `POST /api/simulation/reset` — reset to starting state
+
+---
+
+## Virtual Trading Engine
+
+Users execute simulated market orders against real live prices. All trades settle instantly.
+
+Supported order types:
+
+- Market buy
+- Market sell
+
+Trade flow:
+
+1. User selects a stock and enters quantity
+2. System fetches the current live price from the market price service
+3. Trade executes at that price
+4. Holdings are recalculated via FIFO
+5. Cash balance is adjusted automatically
+
+Validation:
+
+- Insufficient cash for a buy → rejected with error
+- Insufficient shares for a sell → rejected with error
+- Symbol must exist in the `symbols` table
+
+Backend:
+
+- `POST /api/simulation/buy`
+- `POST /api/simulation/sell`
+- `PATCH /api/simulation/trades/{id}/notes` — add or update trade note
+
+Frontend components:
+
+- `SimulationTradeForm` — stock search, quantity input, side selector
+- `OrderConfirmationDialog` — preview before execution
+- `CashBalanceCard` — live cash balance widget
+- `ResetPortfolioDialog` — confirm before resetting portfolio
+
+---
+
+## Portfolio Performance Chart
+
+An interactive historical performance chart is available on each portfolio detail page.
+
+- Shows daily portfolio value from the date of the first transaction to today.
+- Data is computed by replaying historical prices via Yahoo Finance against the user's holdings at each date.
+- Weekend and market holiday dates are fill-forwarded from the nearest prior trading day.
+- Results are cached in Redis for 24 hours.
+- Rendered as a custom SVG area chart (no third-party chart library).
+
+Backend: `GET /api/portfolios/{id}/performance`
+
+Frontend hook: `usePerformance(portfolioId)`
+
+---
+
+## Asset Allocation Chart
+
+Each portfolio detail page includes an asset allocation visualisation.
+
+- Donut chart shows percentage allocation per holding.
+- Bar legend shows symbol, value, and allocation percentage.
+- Data derived from live holdings and current prices.
+
+---
+
+## Settings
+
+Users can manage their account at `/settings`.
+
+Capabilities:
+
+- update display name
+- change password
+- delete account
+
+---
+
+## Mobile Responsive Layout
+
+The dashboard layout is fully responsive.
+
+- Desktop: fixed 240 px sidebar with navigation links.
+- Mobile: hamburger button in the top navigation opens a slide-in drawer sidebar.
+- All pages adapt to small viewports.
 
 ---
 
@@ -184,44 +301,60 @@ Implementation:
 
 # Advanced Features (Future)
 
-These features may be added in future versions.
+These features are not yet implemented.
 
 ---
 
-## Portfolio Analytics
+## Trading Analytics Dashboard
 
-Users can analyze portfolio performance.
+Performance metrics derived from simulation trade history:
 
-Examples:
-
+- win rate
+- best trade
+- worst trade
+- average profit / average loss
+- profit factor
 - total return
-- unrealized gains
-- performance over time
-- asset allocation
 
 ---
 
-## Historical Price Charts
+## Leaderboard
 
-Interactive price charts are available on the Stock Detail screen.
+Users compete using simulation portfolios.
 
-- Powered by a custom SVG chart (no third-party chart library required).
-- Range selector: 1W, 1M, 3M, 6M, 1Y.
-- Hover tooltip shows exact date and closing price.
-- Data fetched from `GET /api/market/chart/{symbol}?range=`, cached in Redis for 24 hours.
-- Weekend and holiday dates are automatically absent from the series.
+- global leaderboard ranked by total return
+- monthly leaderboard
+- user ranking display
+
+---
+
+## Trading Journal View
+
+A dedicated journal view for reviewing and filtering trades by notes/tags.
+
+---
+
+## Limit Orders / Stop Loss
+
+Advanced order types beyond market orders.
+
+---
+
+## Price Alerts
+
+Notify users when a watched stock crosses a threshold.
+
+---
+
+## CSV Export
+
+Export transaction history to CSV.
 
 ---
 
 ## Dividend Tracking
 
-Users can track dividend payments for dividend-paying stocks.
-
----
-
-## Portfolio Comparison
-
-Users can compare multiple portfolios.
+Track dividend payments for dividend-paying stocks.
 
 ---
 

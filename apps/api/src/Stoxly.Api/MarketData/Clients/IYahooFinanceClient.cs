@@ -1,3 +1,5 @@
+using Stoxly.Api.MarketData.DTOs;
+
 namespace Stoxly.Api.MarketData.Clients;
 
 public interface IYahooFinanceClient
@@ -16,4 +18,10 @@ public interface IYahooFinanceClient
     /// prior trading day. Returns null if no data is available.
     /// </summary>
     Task<decimal?> GetHistoricalPriceAsync(string symbol, DateOnly date);
+
+    /// <summary>
+    /// Returns hourly close prices for a symbol between two UTC timestamps (inclusive).
+    /// Returns an empty list if the symbol is unknown, the range has no data, or the API call fails.
+    /// </summary>
+    Task<IReadOnlyList<IntradayPointDto>> GetHourlyClosesAsync(string symbol, DateTimeOffset from, DateTimeOffset to);
 }
