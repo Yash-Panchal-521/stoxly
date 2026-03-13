@@ -5,7 +5,11 @@ import { useAuth } from "@/auth/auth-provider";
 import { useRouter } from "next/navigation";
 import ThemeToggle from "@/components/ui/theme-toggle";
 
-export default function TopNav() {
+interface TopNavProps {
+  onMenuToggle?: () => void;
+}
+
+export default function TopNav({ onMenuToggle }: TopNavProps) {
   const { user, logout } = useAuth();
   const router = useRouter();
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -19,21 +23,30 @@ export default function TopNav() {
 
   return (
     <header
-      className="sticky top-0 z-20 flex h-[52px] items-center justify-between px-6 backdrop-blur-2xl"
+      className="sticky top-0 z-20 flex h-[52px] items-center justify-between px-4 md:px-6 backdrop-blur-2xl"
       style={{
         background: "var(--nav-bg)",
         borderBottom: "0.5px solid var(--nav-border)",
       }}
     >
-      {/* Search */}
-      <div className="relative">
-        <SearchIcon className="absolute left-3 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-muted" />
-        <input
-          type="text"
-          placeholder="Search stocks, portfolios…"
-          className="h-9 w-64 rounded-[10px] pl-9 pr-3 text-[14px] text-text-primary placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-primary/40"
-          style={{ background: "var(--input-fill)" }}
-        />
+      {/* Hamburger (mobile only) + Search */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={onMenuToggle}
+          className="surface-hover flex h-8 w-8 items-center justify-center rounded-xl text-text-secondary transition-all duration-150 hover:text-text-primary md:hidden"
+          aria-label="Open menu"
+        >
+          <MenuIcon className="h-[18px] w-[18px]" />
+        </button>
+        <div className="relative hidden sm:block">
+          <SearchIcon className="absolute left-3 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-muted" />
+          <input
+            type="text"
+            placeholder="Search stocks, portfolios…"
+            className="h-9 w-48 rounded-[10px] pl-9 pr-3 text-[14px] text-text-primary placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-primary/40 lg:w-64"
+            style={{ background: "var(--input-fill)" }}
+          />
+        </div>
       </div>
 
       {/* Right side */}
@@ -84,6 +97,25 @@ export default function TopNav() {
         </div>
       </div>
     </header>
+  );
+}
+
+function MenuIcon({ className }: Readonly<{ className?: string }>) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <line x1="4" y1="6" x2="20" y2="6" />
+      <line x1="4" y1="12" x2="20" y2="12" />
+      <line x1="4" y1="18" x2="20" y2="18" />
+    </svg>
   );
 }
 

@@ -12,9 +12,26 @@ Upcoming changes that are currently under development.
 
 ### Planned
 
-- Watchlist feature
-- Portfolio performance charts
-- Mobile-friendly UI improvements
+- Price alerts (notify when watched stock crosses a threshold)
+- CSV export of transaction history
+
+---
+
+# [0.5.0] - MVP Completion
+
+### Added
+
+- **Settings page** at `/settings` — profile (display name, read-only email), password change for
+  email/password accounts (with re-authentication), and a danger-zone account deletion flow
+- **Mobile responsive layout** — fixed sidebar hides on mobile (`md:hidden`), dashboard layout
+  gains a hamburger button in `TopNav` that opens a slide-in `Sidebar` drawer with a backdrop overlay.
+  Closing happens via close button, backdrop click, or nav-link tap. `md:pl-sidebar` applied to the
+  content column so the layout is correct on desktop too.
+- **Asset Allocation Chart** — donut SVG chart with a bar-legend on the portfolio detail page
+  (`/portfolio/[id]`). Calculates holding weight from live price overrides when available, falling
+  back to average price. Renders 10 distinct accent colors for up to 10+ symbols.
+- **Trades pagination** — client-side page-size of 25 per page with Prev/Next controls and an
+  "X–Y of Z transactions" summary. Page resets to 1 when the portfolio filter changes.
 
 ---
 

@@ -11,6 +11,7 @@ import StatCard from "@/components/cards/StatCard";
 import DeletePortfolioDialog from "@/features/portfolios/DeletePortfolioDialog";
 import HoldingsTable from "@/features/portfolios/HoldingsTable";
 import PerformanceChart from "@/features/portfolios/PerformanceChart";
+import AllocationChart from "@/features/portfolios/AllocationChart";
 import TransactionList from "@/features/transactions/TransactionList";
 
 function formatCurrency(value: number): string {
@@ -133,6 +134,11 @@ export default function PortfolioDetailPage() {
 
       {/* Performance Chart */}
       <PerformanceChart portfolioId={portfolio.id} />
+
+      {/* Allocation Chart */}
+      {holdings && holdings.length > 0 && (
+        <AllocationChart holdings={holdings} priceOverrides={prices} />
+      )}
 
       {/* Transactions */}
       <TransactionList portfolioId={portfolio.id} />

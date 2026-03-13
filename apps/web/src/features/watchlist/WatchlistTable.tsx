@@ -115,18 +115,9 @@ export default function WatchlistTable({
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Symbol</TableHead>
-          <TableHead>Company</TableHead>
-          <TableHead className="text-right">Price</TableHead>
-          <TableHead className="text-right">Change</TableHead>
-          <TableHead className="text-right">Change %</TableHead>
-          <TableHead className="w-12" />
-        </TableRow>
-      </TableHeader>
-      <TableBody>
+    <>
+      {/* ── Mobile list (< md) ── */}
+      <div className="md:hidden space-y-2">
         {items.map((item) => {
           const override = priceOverrides?.[item.symbol];
           const effectivePrice = override?.price ?? item.currentPrice;
@@ -136,59 +127,142 @@ export default function WatchlistTable({
           const flash = flashMap[item.symbol];
 
           return (
-            <TableRow
+            <div
               key={item.symbol}
               className={cn(
-                "cursor-pointer transition-colors duration-700 hover:bg-surface",
+                "rounded-xl border border-border p-3 cursor-pointer transition-colors duration-700",
                 flash === "up" && "bg-success/10",
                 flash === "down" && "bg-danger/10",
               )}
               onClick={() => router.push(`/watchlist/${item.symbol}`)}
             >
-              <TableCell className="font-semibold text-text-primary">
-                {item.symbol}
-              </TableCell>
-              <TableCell className="text-text-secondary">
-                {item.companyName ?? "—"}
-              </TableCell>
-              <TableCell className="text-right text-text-secondary">
-                {formatCurrency(effectivePrice)}
-              </TableCell>
-              <TableCell
-                className={cn(
-                  "text-right font-medium",
-                  changeColorClass(effectiveChange),
-                )}
-              >
-                {formatRawChange(effectiveChange)}
-              </TableCell>
-              <TableCell
-                className={cn(
-                  "text-right font-medium",
-                  changeColorClass(effectiveChangePercent),
-                )}
-              >
-                {formatChange(effectiveChangePercent)}
-              </TableCell>
-              <TableCell className="text-right">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-muted hover:text-danger"
-                  disabled={isRemoving}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleRemove(item.symbol);
-                  }}
-                  aria-label={`Remove ${item.symbol} from watchlist`}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </TableCell>
-            </TableRow>
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="font-semibold text-text-primary">
+                    {item.symbol}
+                  </p>
+                  <p className="text-small text-text-secondary truncate">
+                    {item.companyName ?? "—"}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className="text-right">
+                    <p className="text-small text-text-secondary">
+                      {formatCurrency(effectivePrice)}
+                    </p>
+                    <p
+                      className={cn(
+                        "text-small font-medium",
+                        changeColorClass(effectiveChangePercent),
+                      )}
+                    >
+                      {formatChange(effectiveChangePercent)}
+                      {effectiveChange !== null &&
+                        effectiveChange !== undefined && (
+                          <span className="ml-1 text-small opacity-70">
+                            ({formatRawChange(effectiveChange)})
+                          </span>
+                        )}
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-muted hover:text-danger"
+                    disabled={isRemoving}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRemove(item.symbol);
+                    }}
+                    aria-label={`Remove ${item.symbol} from watchlist`}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
           );
         })}
-      </TableBody>
-    </Table>
+      </div>
+
+      {/* ── Desktop table (≥ md) ── */}
+      <div className="hidden md:block">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Symbol</TableHead>
+              <TableHead>Company</TableHead>
+              <TableHead className="text-right">Price</TableHead>
+              <TableHead className="text-right">Change</TableHead>
+              <TableHead className="text-right">Change %</TableHead>
+              <TableHead className="w-12" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {items.map((item) => {
+              const override = priceOverrides?.[item.symbol];
+              const effectivePrice = override?.price ?? item.currentPrice;
+              const effectiveChange = override?.change ?? item.change;
+              const effectiveChangePercent =
+                override?.changePercent ?? item.changePercent;
+              const flash = flashMap[item.symbol];
+
+              return (
+                <TableRow
+                  key={item.symbol}
+                  className={cn(
+                    "cursor-pointer transition-colors duration-700 hover:bg-surface",
+                    flash === "up" && "bg-success/10",
+                    flash === "down" && "bg-danger/10",
+                  )}
+                  onClick={() => router.push(`/watchlist/${item.symbol}`)}
+                >
+                  <TableCell className="font-semibold text-text-primary">
+                    {item.symbol}
+                  </TableCell>
+                  <TableCell className="text-text-secondary">
+                    {item.companyName ?? "—"}
+                  </TableCell>
+                  <TableCell className="text-right text-text-secondary">
+                    {formatCurrency(effectivePrice)}
+                  </TableCell>
+                  <TableCell
+                    className={cn(
+                      "text-right font-medium",
+                      changeColorClass(effectiveChange),
+                    )}
+                  >
+                    {formatRawChange(effectiveChange)}
+                  </TableCell>
+                  <TableCell
+                    className={cn(
+                      "text-right font-medium",
+                      changeColorClass(effectiveChangePercent),
+                    )}
+                  >
+                    {formatChange(effectiveChangePercent)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted hover:text-danger"
+                      disabled={isRemoving}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemove(item.symbol);
+                      }}
+                      aria-label={`Remove ${item.symbol} from watchlist`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+    </>
   );
 }

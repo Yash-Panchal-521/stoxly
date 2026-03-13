@@ -129,19 +129,9 @@ export default function HoldingsTable({
       )}
 
       {holdings && holdings.length > 0 && (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Symbol</TableHead>
-              <TableHead className="text-right">Quantity</TableHead>
-              <TableHead className="text-right">Avg Price</TableHead>
-              <TableHead className="text-right">Current Price</TableHead>
-              <TableHead className="text-right">Invested</TableHead>
-              <TableHead className="text-right">Value</TableHead>
-              <TableHead className="text-right">Profit / Loss</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+        <>
+          {/* ── Mobile list (< md) ── */}
+          <div className="md:hidden space-y-2">
             {holdings.map((holding) => {
               const overridePrice = priceOverrides?.[holding.symbol]?.price;
               const effectivePrice = overridePrice ?? holding.currentPrice;
@@ -157,38 +147,111 @@ export default function HoldingsTable({
               const flash = flashMap[holding.symbol];
 
               return (
-                <TableRow
+                <div
                   key={holding.symbol}
                   className={cn(
-                    "transition-colors duration-700",
+                    "rounded-xl border border-border p-3 transition-colors duration-700",
                     flash === "up" && "bg-success/10",
                     flash === "down" && "bg-danger/10",
                   )}
                 >
-                  <TableCell className="font-semibold text-text-primary">
-                    {holding.symbol}
-                  </TableCell>
-                  <TableCell className="text-right text-text-secondary">
-                    {formatQuantity(holding.quantity)}
-                  </TableCell>
-                  <TableCell className="text-right text-text-secondary">
-                    {formatCurrency(holding.averagePrice)}
-                  </TableCell>
-                  <TableCell className="text-right text-text-secondary">
-                    {formatCurrency(effectivePrice)}
-                  </TableCell>
-                  <TableCell className="text-right text-text-secondary">
-                    {formatCurrency(holding.invested)}
-                  </TableCell>
-                  <TableCell className="text-right text-text-secondary">
-                    {formatCurrency(value)}
-                  </TableCell>
-                  <ProfitCell value={totalPnl} />
-                </TableRow>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="font-semibold text-text-primary">
+                      {holding.symbol}
+                    </span>
+                    <span
+                      className={`text-small font-medium ${totalPnl === null ? "text-muted" : profitColorClass(totalPnl)}`}
+                    >
+                      {totalPnl === null
+                        ? "—"
+                        : `${totalPnl > 0 ? "+" : ""}${formatCurrency(totalPnl)}`}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-small text-text-secondary">
+                    <span>Qty: {formatQuantity(holding.quantity)}</span>
+                    <span className="text-right">
+                      Value: {formatCurrency(value)}
+                    </span>
+                    <span>Avg: {formatCurrency(holding.averagePrice)}</span>
+                    <span className="text-right">
+                      Invested: {formatCurrency(holding.invested)}
+                    </span>
+                    <span>
+                      Price:{" "}
+                      {effectivePrice !== null && effectivePrice !== undefined
+                        ? formatCurrency(effectivePrice)
+                        : "—"}
+                    </span>
+                  </div>
+                </div>
               );
             })}
-          </TableBody>
-        </Table>
+          </div>
+
+          {/* ── Desktop table (≥ md) ── */}
+          <div className="hidden md:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Symbol</TableHead>
+                  <TableHead className="text-right">Quantity</TableHead>
+                  <TableHead className="text-right">Avg Price</TableHead>
+                  <TableHead className="text-right">Current Price</TableHead>
+                  <TableHead className="text-right">Invested</TableHead>
+                  <TableHead className="text-right">Value</TableHead>
+                  <TableHead className="text-right">Profit / Loss</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {holdings.map((holding) => {
+                  const overridePrice = priceOverrides?.[holding.symbol]?.price;
+                  const effectivePrice = overridePrice ?? holding.currentPrice;
+                  const value = computeValue(holding, overridePrice);
+                  const unrealized = computeUnrealizedProfit(
+                    holding,
+                    overridePrice,
+                  );
+                  const totalPnl =
+                    unrealized === null
+                      ? null
+                      : unrealized + holding.realizedProfit;
+                  const flash = flashMap[holding.symbol];
+
+                  return (
+                    <TableRow
+                      key={holding.symbol}
+                      className={cn(
+                        "transition-colors duration-700",
+                        flash === "up" && "bg-success/10",
+                        flash === "down" && "bg-danger/10",
+                      )}
+                    >
+                      <TableCell className="font-semibold text-text-primary">
+                        {holding.symbol}
+                      </TableCell>
+                      <TableCell className="text-right text-text-secondary">
+                        {formatQuantity(holding.quantity)}
+                      </TableCell>
+                      <TableCell className="text-right text-text-secondary">
+                        {formatCurrency(holding.averagePrice)}
+                      </TableCell>
+                      <TableCell className="text-right text-text-secondary">
+                        {formatCurrency(effectivePrice)}
+                      </TableCell>
+                      <TableCell className="text-right text-text-secondary">
+                        {formatCurrency(holding.invested)}
+                      </TableCell>
+                      <TableCell className="text-right text-text-secondary">
+                        {formatCurrency(value)}
+                      </TableCell>
+                      <ProfitCell value={totalPnl} />
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </>
       )}
     </div>
   );

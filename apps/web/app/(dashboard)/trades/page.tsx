@@ -46,10 +46,12 @@ function formatQuantity(value: number): string {
 }
 
 const ALL_PORTFOLIOS = "__all__";
+const PAGE_SIZE = 25;
 
 export default function TradesPage() {
   const [selectedPortfolioId, setSelectedPortfolioId] =
     useState(ALL_PORTFOLIOS);
+  const [page, setPage] = useState(1);
 
   const { data: transactions, isLoading, isError } = useAllTransactions();
   const { data: portfolios } = usePortfolios();
@@ -59,6 +61,15 @@ export default function TradesPage() {
     if (selectedPortfolioId === ALL_PORTFOLIOS) return transactions;
     return transactions.filter((t) => t.portfolioId === selectedPortfolioId);
   }, [transactions, selectedPortfolioId]);
+
+  // Reset to page 1 when filter changes
+  const handlePortfolioChange = (value: string) => {
+    setSelectedPortfolioId(value);
+    setPage(1);
+  };
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <div className="space-y-6">
@@ -75,7 +86,7 @@ export default function TradesPage() {
         <div className="shrink-0 w-52">
           <Select
             value={selectedPortfolioId}
-            onValueChange={setSelectedPortfolioId}
+            onValueChange={handlePortfolioChange}
           >
             <SelectTrigger className="stoxly-input h-9 text-small">
               <SelectValue placeholder="All portfolios" />
@@ -96,6 +107,11 @@ export default function TradesPage() {
       {!isLoading && !isError && (
         <p className="text-small text-text-secondary">
           Showing{" "}
+          <span className="font-semibold text-text-primary">
+            {(page - 1) * PAGE_SIZE + 1}–
+            {Math.min(page * PAGE_SIZE, filtered.length)}
+          </span>{" "}
+          of{" "}
           <span className="font-semibold text-text-primary">
             {filtered.length}
           </span>{" "}
@@ -131,71 +147,155 @@ export default function TradesPage() {
         </div>
       )}
 
-      {/* Table */}
+      {/* Table / List */}
       {!isLoading && !isError && filtered.length > 0 && (
-        <div className="stoxly-card p-0 overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Portfolio</TableHead>
-                <TableHead>Symbol</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead className="text-right">Quantity</TableHead>
-                <TableHead className="text-right">Price</TableHead>
-                <TableHead className="text-right">Total</TableHead>
-                <TableHead>Notes</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((tx) => {
-                const isBuy = tx.type === "BUY";
-                return (
-                  <TableRow key={tx.id}>
-                    <TableCell className="text-text-secondary text-small whitespace-nowrap">
-                      {formatDate(tx.tradeDate)}
-                    </TableCell>
-                    <TableCell>
-                      {tx.portfolioName ? (
-                        <Link
-                          href={`/portfolio/${tx.portfolioId}`}
-                          className="text-small font-medium text-text-secondary hover:text-text-primary transition-all duration-150 ease-in-out"
-                        >
-                          {tx.portfolioName}
-                        </Link>
-                      ) : (
-                        <span className="text-small text-muted">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="font-semibold text-text-primary">
-                      {tx.symbol}
-                    </TableCell>
-                    <TableCell>
+        <>
+          {/* ── Mobile list (< md) ── */}
+          <div className="md:hidden space-y-2">
+            {paginated.map((tx) => {
+              const isBuy = tx.type === "BUY";
+              return (
+                <div key={tx.id} className="stoxly-card p-3 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-text-primary">
+                        {tx.symbol}
+                      </span>
                       <span
-                        className={`inline-block rounded px-2 py-0.5 text-small font-semibold ${
+                        className={`rounded px-2 py-0.5 text-small font-semibold ${
                           isBuy ? "trend-up" : "trend-down"
                         }`}
                       >
                         {tx.type}
                       </span>
-                    </TableCell>
-                    <TableCell className="text-right text-text-primary">
-                      {formatQuantity(tx.quantity)}
-                    </TableCell>
-                    <TableCell className="text-right text-text-primary">
-                      ${formatCurrency(tx.price)}
-                    </TableCell>
-                    <TableCell className="text-right font-semibold text-text-primary">
+                    </div>
+                    <span className="font-semibold text-text-primary">
                       ${formatCurrency(tx.total)}
-                    </TableCell>
-                    <TableCell className="text-small text-text-secondary max-w-[160px] truncate">
-                      {tx.notes ?? "—"}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-small text-text-secondary">
+                    <span className="whitespace-nowrap">
+                      {formatDate(tx.tradeDate)}
+                    </span>
+                    {tx.portfolioName ? (
+                      <Link
+                        href={`/portfolio/${tx.portfolioId}`}
+                        className="font-medium text-text-secondary hover:text-text-primary transition-all duration-150 ease-in-out truncate ml-2"
+                      >
+                        {tx.portfolioName}
+                      </Link>
+                    ) : (
+                      <span className="text-muted">—</span>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between text-small text-text-secondary">
+                    <span>
+                      {formatQuantity(tx.quantity)} @ $
+                      {formatCurrency(tx.price)}
+                    </span>
+                    {tx.notes && (
+                      <span className="text-muted truncate ml-2 max-w-[140px]">
+                        {tx.notes}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* ── Desktop table (≥ md) ── */}
+          <div className="hidden md:block stoxly-card p-0 overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Portfolio</TableHead>
+                  <TableHead>Symbol</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead className="text-right">Quantity</TableHead>
+                  <TableHead className="text-right">Price</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
+                  <TableHead>Notes</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paginated.map((tx) => {
+                  const isBuy = tx.type === "BUY";
+                  return (
+                    <TableRow key={tx.id}>
+                      <TableCell className="text-text-secondary text-small whitespace-nowrap">
+                        {formatDate(tx.tradeDate)}
+                      </TableCell>
+                      <TableCell>
+                        {tx.portfolioName ? (
+                          <Link
+                            href={`/portfolio/${tx.portfolioId}`}
+                            className="text-small font-medium text-text-secondary hover:text-text-primary transition-all duration-150 ease-in-out"
+                          >
+                            {tx.portfolioName}
+                          </Link>
+                        ) : (
+                          <span className="text-small text-muted">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="font-semibold text-text-primary">
+                        {tx.symbol}
+                      </TableCell>
+                      <TableCell>
+                        <span
+                          className={`inline-block rounded px-2 py-0.5 text-small font-semibold ${
+                            isBuy ? "trend-up" : "trend-down"
+                          }`}
+                        >
+                          {tx.type}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right text-text-primary">
+                        {formatQuantity(tx.quantity)}
+                      </TableCell>
+                      <TableCell className="text-right text-text-primary">
+                        ${formatCurrency(tx.price)}
+                      </TableCell>
+                      <TableCell className="text-right font-semibold text-text-primary">
+                        ${formatCurrency(tx.total)}
+                      </TableCell>
+                      <TableCell className="text-small text-text-secondary max-w-[160px] truncate">
+                        {tx.notes ?? "—"}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </>
+      )}
+
+      {/* Pagination */}
+      {!isLoading && !isError && totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2">
+          <button
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="btn-secondary h-8 px-3 text-small disabled:opacity-40"
+          >
+            ← Prev
+          </button>
+          <span className="text-small text-text-secondary">
+            Page <span className="font-semibold text-text-primary">{page}</span>{" "}
+            of{" "}
+            <span className="font-semibold text-text-primary">
+              {totalPages}
+            </span>
+          </span>
+          <button
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages}
+            className="btn-secondary h-8 px-3 text-small disabled:opacity-40"
+          >
+            Next →
+          </button>
         </div>
       )}
     </div>

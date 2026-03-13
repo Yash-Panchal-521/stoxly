@@ -11,17 +11,16 @@ const navItems = [
   { label: "Trades", href: "/trades", icon: ArrowLeftRightIcon },
 ];
 
-export default function Sidebar() {
+interface SidebarProps {
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
+}
+
+export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
   const pathname = usePathname();
 
-  return (
-    <aside
-      className="fixed left-0 top-0 z-30 flex h-screen w-sidebar flex-col"
-      style={{
-        background: "var(--sidebar-bg)",
-        borderRight: "0.5px solid var(--sidebar-border)",
-      }}
-    >
+  const sidebarContent = (
+    <>
       {/* Brand */}
       <div className="flex h-[52px] items-center gap-2.5 px-5">
         <div className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-[7px] bg-primary">
@@ -33,6 +32,16 @@ export default function Sidebar() {
         >
           Stoxly
         </span>
+        {/* Close button — mobile only */}
+        {onMobileClose && (
+          <button
+            onClick={onMobileClose}
+            className="ml-auto flex h-7 w-7 items-center justify-center rounded-lg text-text-secondary hover:text-text-primary md:hidden"
+            aria-label="Close menu"
+          >
+            <XIcon className="h-4 w-4" />
+          </button>
+        )}
       </div>
 
       <div
@@ -49,6 +58,7 @@ export default function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
+              onClick={onMobileClose}
               className={cn(
                 "flex items-center gap-2.5 rounded-[10px] px-3 py-2 text-[14px] font-medium transition-all duration-150",
                 isActive
@@ -77,17 +87,74 @@ export default function Sidebar() {
       <div className="px-2 py-3">
         <Link
           href="/settings"
+          onClick={onMobileClose}
           className="surface-hover flex items-center gap-2.5 rounded-[10px] px-3 py-2 text-[14px] font-medium text-text-secondary transition-all duration-150 hover:text-text-primary"
         >
           <SettingsIcon className="h-[17px] w-[17px] shrink-0" />
           Settings
         </Link>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Desktop sidebar */}
+      <aside
+        className="fixed left-0 top-0 z-30 hidden h-screen w-sidebar flex-col md:flex"
+        style={{
+          background: "var(--sidebar-bg)",
+          borderRight: "0.5px solid var(--sidebar-border)",
+        }}
+      >
+        {sidebarContent}
+      </aside>
+
+      {/* Mobile: backdrop */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-overlay md:hidden"
+          onClick={onMobileClose}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Mobile: drawer */}
+      <aside
+        className={cn(
+          "fixed left-0 top-0 z-50 flex h-screen w-[260px] flex-col transition-transform duration-300 ease-in-out md:hidden",
+          mobileOpen ? "translate-x-0" : "-translate-x-full",
+        )}
+        style={{
+          background: "var(--sidebar-bg)",
+          borderRight: "0.5px solid var(--sidebar-border)",
+        }}
+      >
+        {sidebarContent}
+      </aside>
+    </>
   );
 }
 
 /* ── Inline SVG icons (avoids extra dependency) ── */
+
+function XIcon({ className }: Readonly<{ className?: string }>) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <path d="M18 6 6 18" />
+      <path d="m6 6 12 12" />
+    </svg>
+  );
+}
 
 function LayoutDashboardIcon({ className }: Readonly<{ className?: string }>) {
   return (

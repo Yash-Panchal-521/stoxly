@@ -123,6 +123,80 @@ function TransactionTableRow({
   );
 }
 
+function TransactionMobileCard({
+  transaction,
+  portfolioId,
+}: TransactionRowProps) {
+  const { toast } = useToast();
+  const { mutate: del, isPending } = useDeleteTransaction(portfolioId);
+  const [editOpen, setEditOpen] = useState(false);
+
+  function handleDelete() {
+    del(transaction.id, {
+      onSuccess: () => toast("Transaction deleted", "success"),
+      onError: (err) => toast(err.message || "Failed to delete", "error"),
+    });
+  }
+
+  const isBuy = transaction.type === "BUY";
+
+  return (
+    <>
+      <div className="rounded-xl border border-border p-3">
+        <div className="flex items-center justify-between mb-1.5">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-text-primary">
+              {transaction.symbol}
+            </span>
+            <span
+              className={`rounded px-2 py-0.5 text-small font-semibold ${
+                isBuy ? "trend-up" : "trend-down"
+              }`}
+            >
+              {transaction.type}
+            </span>
+          </div>
+          <span className="font-semibold text-text-primary">
+            ${formatCurrency(transaction.total)}
+          </span>
+        </div>
+        <p className="text-small text-text-secondary mb-1.5">
+          {formatDate(transaction.tradeDate)}
+        </p>
+        <div className="flex items-center justify-between">
+          <span className="text-small text-text-secondary">
+            {formatQuantity(transaction.quantity)} @ $
+            {formatCurrency(transaction.price)}
+          </span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setEditOpen(true)}
+              className="text-small text-muted hover:text-text-primary transition-all duration-150 ease-in-out"
+              aria-label="Edit transaction"
+            >
+              Edit
+            </button>
+            <button
+              onClick={handleDelete}
+              disabled={isPending}
+              className="text-small text-muted hover:text-danger transition-all duration-150 ease-in-out disabled:opacity-50"
+              aria-label="Delete transaction"
+            >
+              {isPending ? "..." : "Delete"}
+            </button>
+          </div>
+        </div>
+      </div>
+      <EditTransactionDialog
+        transaction={transaction}
+        portfolioId={portfolioId}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+      />
+    </>
+  );
+}
+
 interface TransactionListProps {
   portfolioId: string;
 }
@@ -168,28 +242,44 @@ export default function TransactionList({ portfolioId }: TransactionListProps) {
       )}
 
       {!isLoading && !isError && transactions && transactions.length > 0 && (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead>Symbol</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead className="text-right">Quantity</TableHead>
-              <TableHead className="text-right">Price</TableHead>
-              <TableHead className="text-right">Total</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+        <>
+          {/* ── Mobile list (< md) ── */}
+          <div className="md:hidden space-y-2">
             {transactions.map((tx) => (
-              <TransactionTableRow
+              <TransactionMobileCard
                 key={tx.id}
                 transaction={tx}
                 portfolioId={portfolioId}
               />
             ))}
-          </TableBody>
-        </Table>
+          </div>
+
+          {/* ── Desktop table (≥ md) ── */}
+          <div className="hidden md:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Symbol</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead className="text-right">Quantity</TableHead>
+                  <TableHead className="text-right">Price</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {transactions.map((tx) => (
+                  <TransactionTableRow
+                    key={tx.id}
+                    transaction={tx}
+                    portfolioId={portfolioId}
+                  />
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </>
       )}
 
       <AddTransactionDialog

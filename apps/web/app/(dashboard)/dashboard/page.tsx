@@ -263,38 +263,19 @@ export default function DashboardPage() {
           </div>
         )}
         {!isTransactionsLoading && recentTransactions.length > 0 && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-small">
-              <thead>
-                <tr className="border-b border-border text-text-secondary">
-                  <th className="pb-2 text-left font-medium">Date</th>
-                  <th className="pb-2 text-left font-medium">Symbol</th>
-                  <th className="pb-2 text-left font-medium">Portfolio</th>
-                  <th className="pb-2 text-left font-medium">Type</th>
-                  <th className="pb-2 text-right font-medium">Qty</th>
-                  <th className="pb-2 text-right font-medium">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentTransactions.map((tx) => (
-                  <tr
-                    key={tx.id}
-                    className="border-b border-border last:border-0 hover:bg-surface transition-all duration-150 ease-in-out"
-                  >
-                    <td className="py-2.5 text-text-secondary">
-                      {new Date(tx.tradeDate).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                    </td>
-                    <td className="py-2.5 font-medium text-text-primary">
-                      {tx.symbol}
-                    </td>
-                    <td className="py-2.5 text-text-secondary">
-                      {tx.portfolioName ?? "—"}
-                    </td>
-                    <td className="py-2.5">
+          <>
+            {/* ── Mobile list (< md) ── */}
+            <div className="md:hidden space-y-2">
+              {recentTransactions.map((tx) => (
+                <div
+                  key={tx.id}
+                  className="rounded-xl border border-border p-3 space-y-1"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-small font-semibold text-text-primary">
+                        {tx.symbol}
+                      </span>
                       <span
                         className={`rounded px-1.5 py-0.5 text-small font-medium ${
                           tx.type === "BUY"
@@ -304,18 +285,85 @@ export default function DashboardPage() {
                       >
                         {tx.type}
                       </span>
-                    </td>
-                    <td className="py-2.5 text-right text-text-primary">
-                      {tx.quantity}
-                    </td>
-                    <td className="py-2.5 text-right text-text-primary">
+                    </div>
+                    <span className="text-small font-medium text-text-primary">
                       ${tx.total.toFixed(2)}
-                    </td>
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-small text-text-secondary">
+                    <span>
+                      {new Date(tx.tradeDate).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
+                    </span>
+                    <span>Qty: {tx.quantity}</span>
+                  </div>
+                  {tx.portfolioName && (
+                    <p className="text-small text-text-secondary">
+                      {tx.portfolioName}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* ── Desktop table (≥ md) ── */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-small">
+                <thead>
+                  <tr className="border-b border-border text-text-secondary">
+                    <th className="pb-2 text-left font-medium">Date</th>
+                    <th className="pb-2 text-left font-medium">Symbol</th>
+                    <th className="pb-2 text-left font-medium">Portfolio</th>
+                    <th className="pb-2 text-left font-medium">Type</th>
+                    <th className="pb-2 text-right font-medium">Qty</th>
+                    <th className="pb-2 text-right font-medium">Total</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {recentTransactions.map((tx) => (
+                    <tr
+                      key={tx.id}
+                      className="border-b border-border last:border-0 hover:bg-surface transition-all duration-150 ease-in-out"
+                    >
+                      <td className="py-2.5 text-text-secondary">
+                        {new Date(tx.tradeDate).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
+                      </td>
+                      <td className="py-2.5 font-medium text-text-primary">
+                        {tx.symbol}
+                      </td>
+                      <td className="py-2.5 text-text-secondary">
+                        {tx.portfolioName ?? "—"}
+                      </td>
+                      <td className="py-2.5">
+                        <span
+                          className={`rounded px-1.5 py-0.5 text-small font-medium ${
+                            tx.type === "BUY"
+                              ? "bg-success/10 text-success"
+                              : "bg-danger/10 text-danger"
+                          }`}
+                        >
+                          {tx.type}
+                        </span>
+                      </td>
+                      <td className="py-2.5 text-right text-text-primary">
+                        {tx.quantity}
+                      </td>
+                      <td className="py-2.5 text-right text-text-primary">
+                        ${tx.total.toFixed(2)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </div>

@@ -148,6 +148,110 @@ function PortfolioRow({
   );
 }
 
+interface PortfolioMobileCardProps {
+  readonly portfolio: PortfolioResponse;
+  readonly portfolioValue: number | undefined;
+  readonly totalProfit: number | undefined;
+  readonly isLoadingMetrics: boolean;
+  readonly profitPositive: boolean;
+}
+
+function PortfolioMobileCard({
+  portfolio,
+  portfolioValue,
+  totalProfit,
+  isLoadingMetrics,
+  profitPositive,
+}: PortfolioMobileCardProps) {
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
+  return (
+    <>
+      <div className="stoxly-card space-y-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="font-semibold text-text-primary">{portfolio.name}</p>
+            {portfolio.description && (
+              <p className="text-small text-text-secondary line-clamp-1 mt-0.5">
+                {portfolio.description}
+              </p>
+            )}
+          </div>
+          <span className="rounded px-2 py-0.5 text-small font-medium border border-border text-text-secondary shrink-0">
+            {portfolio.baseCurrency}
+          </span>
+        </div>
+        <div className="grid grid-cols-2 gap-2 text-small">
+          <div>
+            <p className="text-text-secondary">Value</p>
+            <p className="font-semibold text-text-primary mt-0.5">
+              {isLoadingMetrics ? (
+                <span className="inline-block h-4 w-20 animate-pulse rounded bg-surface" />
+              ) : portfolioValue !== undefined ? (
+                formatCurrency(portfolioValue)
+              ) : (
+                "—"
+              )}
+            </p>
+          </div>
+          <div>
+            <p className="text-text-secondary">Total P&amp;L</p>
+            <p
+              className={`font-semibold mt-0.5 ${profitPositive ? "text-success" : "text-danger"}`}
+            >
+              {isLoadingMetrics ? (
+                <span className="inline-block h-4 w-16 animate-pulse rounded bg-surface" />
+              ) : totalProfit !== undefined ? (
+                `${profitPositive ? "+" : ""}${formatCurrency(totalProfit)}`
+              ) : (
+                "—"
+              )}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-small text-text-secondary">
+            {formatDate(portfolio.createdAt)}
+          </span>
+          <div className="flex items-center gap-3">
+            <Button variant="secondary" size="sm" asChild>
+              <Link href={`/portfolio/${portfolio.id}`}>Open</Link>
+            </Button>
+            <button
+              onClick={() => setRenameOpen(true)}
+              className="text-small text-muted hover:text-text-primary transition-all duration-150 ease-in-out"
+            >
+              Rename
+            </button>
+            <button
+              onClick={() => setDeleteOpen(true)}
+              className="text-small text-muted hover:text-danger transition-all duration-150 ease-in-out"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <RenamePortfolioDialog
+        portfolioId={portfolio.id}
+        currentName={portfolio.name}
+        currentDescription={portfolio.description}
+        open={renameOpen}
+        onOpenChange={setRenameOpen}
+      />
+      <DeletePortfolioDialog
+        portfolioId={portfolio.id}
+        portfolioName={portfolio.name}
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        redirectTo="/portfolio"
+      />
+    </>
+  );
+}
+
 export default function PortfoliosPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const { data: portfolios, isLoading, isError } = usePortfolios();
@@ -204,33 +308,57 @@ export default function PortfoliosPage() {
         </div>
       )}
 
-      {/* Table */}
+      {/* Table / List */}
       {!isLoading && !isError && portfolios && portfolios.length > 0 && (
-        <div className="stoxly-card p-0 overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Portfolio</TableHead>
-                <TableHead>Currency</TableHead>
-                <TableHead className="text-right">Value</TableHead>
-                <TableHead className="text-right">Total P&amp;L</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {portfolios.map((portfolio, i) => (
-                <PortfolioRow
+        <>
+          {/* ── Mobile list (< md) ── */}
+          <div className="md:hidden space-y-3">
+            {portfolios.map((portfolio, i) => {
+              const portfolioValue = metricsQueries[i]?.data?.portfolioValue;
+              const totalProfit = metricsQueries[i]?.data?.totalProfit;
+              const isLoadingMetrics = metricsQueries[i]?.isLoading ?? true;
+              const profitPositive = (totalProfit ?? 0) >= 0;
+
+              return (
+                <PortfolioMobileCard
                   key={portfolio.id}
                   portfolio={portfolio}
-                  portfolioValue={metricsQueries[i]?.data?.portfolioValue}
-                  totalProfit={metricsQueries[i]?.data?.totalProfit}
-                  isLoadingMetrics={metricsQueries[i]?.isLoading ?? true}
+                  portfolioValue={portfolioValue}
+                  totalProfit={totalProfit}
+                  isLoadingMetrics={isLoadingMetrics}
+                  profitPositive={profitPositive}
                 />
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+              );
+            })}
+          </div>
+
+          {/* ── Desktop table (≥ md) ── */}
+          <div className="hidden md:block stoxly-card p-0 overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Portfolio</TableHead>
+                  <TableHead>Currency</TableHead>
+                  <TableHead className="text-right">Value</TableHead>
+                  <TableHead className="text-right">Total P&amp;L</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {portfolios.map((portfolio, i) => (
+                  <PortfolioRow
+                    key={portfolio.id}
+                    portfolio={portfolio}
+                    portfolioValue={metricsQueries[i]?.data?.portfolioValue}
+                    totalProfit={metricsQueries[i]?.data?.totalProfit}
+                    isLoadingMetrics={metricsQueries[i]?.isLoading ?? true}
+                  />
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </>
       )}
 
       <CreatePortfolioModal open={createOpen} onOpenChange={setCreateOpen} />

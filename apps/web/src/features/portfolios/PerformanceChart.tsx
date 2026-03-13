@@ -1,10 +1,17 @@
 "use client";
 
-import { useCallback, useId, useRef, useState } from "react";
+import { useState } from "react";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 import type { PerformanceDataPoint } from "@/types/portfolio";
 import { usePerformance } from "@/hooks/use-performance";
-
-// ─── helpers ─────────────────────────────────────────────────────────────────
 
 function formatCurrency(value: number): string {
   if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(2)}M`;
@@ -31,32 +38,44 @@ function formatDateShort(iso: string): string {
   });
 }
 
-// Build a smooth SVG path using cardinal spline interpolation.
-function buildSmoothPath(points: { x: number; y: number }[]): string {
-  if (points.length === 0) return "";
-  if (points.length === 1) return `M ${points[0].x} ${points[0].y}`;
+type Range = "1M" | "3M" | "6M" | "1Y" | "ALL";
+const RANGES: Range[] = ["1M", "3M", "6M", "1Y", "ALL"];
 
-  const tension = 0.4;
-  let d = `M ${points[0].x} ${points[0].y}`;
-
-  for (let i = 0; i < points.length - 1; i++) {
-    const p0 = points[Math.max(0, i - 1)];
-    const p1 = points[i];
-    const p2 = points[i + 1];
-    const p3 = points[Math.min(points.length - 1, i + 2)];
-
-    const cp1x = p1.x + (p2.x - p0.x) * tension;
-    const cp1y = p1.y + (p2.y - p0.y) * tension;
-    const cp2x = p2.x - (p3.x - p1.x) * tension;
-    const cp2y = p2.y - (p3.y - p1.y) * tension;
-
-    d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`;
-  }
-
-  return d;
+function filterByRange(
+  data: PerformanceDataPoint[],
+  range: Range,
+): PerformanceDataPoint[] {
+  if (range === "ALL" || data.length === 0) return data;
+  const months: Record<Range, number> = {
+    "1M": 1,
+    "3M": 3,
+    "6M": 6,
+    "1Y": 12,
+    ALL: 0,
+  };
+  const cutoff = new Date();
+  cutoff.setMonth(cutoff.getMonth() - months[range]);
+  return data.filter((d) => new Date(d.date) >= cutoff);
 }
 
-// ─── Skeleton ─────────────────────────────────────────────────────────────────
+function CustomTooltip({
+  active,
+  payload,
+}: {
+  active?: boolean;
+  payload?: Array<{ payload: PerformanceDataPoint }>;
+}) {
+  if (!active || !payload?.length) return null;
+  const point = payload[0]!.payload;
+  return (
+    <div className="rounded-xl border border-border bg-card px-3 py-2 shadow-sm">
+      <p className="text-small font-semibold text-text-primary">
+        {formatCurrency(point.value)}
+      </p>
+      <p className="text-small text-text-secondary">{formatDate(point.date)}</p>
+    </div>
+  );
+}
 
 function ChartSkeleton() {
   return (
@@ -70,79 +89,16 @@ function ChartSkeleton() {
   );
 }
 
-// ─── Range buttons ─────────────────────────────────────────────────────────────
-
-type Range = "1M" | "3M" | "6M" | "1Y" | "ALL";
-
-const RANGES: Range[] = ["1M", "3M", "6M", "1Y", "ALL"];
-
-function filterByRange(
-  data: PerformanceDataPoint[],
-  range: Range,
-): PerformanceDataPoint[] {
-  if (range === "ALL" || data.length === 0) return data;
-  const now = new Date();
-  const cutoffs: Record<Range, number> = {
-    "1M": 1,
-    "3M": 3,
-    "6M": 6,
-    "1Y": 12,
-    ALL: 0,
-  };
-  const cutoff = new Date(now);
-  cutoff.setMonth(cutoff.getMonth() - cutoffs[range]);
-  return data.filter((d) => new Date(d.date) >= cutoff);
-}
-
-// ─── Main component ──────────────────────────────────────────────────────────
-
 interface PerformanceChartProps {
   readonly portfolioId: string;
 }
-
-interface TooltipState {
-  x: number;
-  y: number;
-  point: PerformanceDataPoint;
-}
-
-const PADDING = { top: 16, right: 12, bottom: 32, left: 56 };
-const SVG_HEIGHT = 220;
 
 export default function PerformanceChart({
   portfolioId,
 }: PerformanceChartProps) {
   const { data, isLoading, isError } = usePerformance(portfolioId);
   const [range, setRange] = useState<Range>("ALL");
-  const [tooltip, setTooltip] = useState<TooltipState | null>(null);
-  const svgRef = useRef<SVGSVGElement>(null);
-  const gradientId = useId().replaceAll(":", "");
 
-  const filtered = filterByRange(data ?? [], range);
-
-  const computePoints = useCallback(
-    (width: number) => {
-      if (filtered.length === 0) return { points: [], minVal: 0, maxVal: 0 };
-
-      const values = filtered.map((d) => d.value);
-      const minVal = Math.min(...values);
-      const maxVal = Math.max(...values);
-      const valRange = maxVal - minVal || 1;
-
-      const innerW = width - PADDING.left - PADDING.right;
-      const innerH = SVG_HEIGHT - PADDING.top - PADDING.bottom;
-
-      const points = filtered.map((d, i) => ({
-        x: PADDING.left + (i / (filtered.length - 1 || 1)) * innerW,
-        y: PADDING.top + innerH - ((d.value - minVal) / valRange) * innerH,
-      }));
-
-      return { points, minVal, maxVal };
-    },
-    [filtered],
-  );
-
-  // ── Rendering ────────────────────────────────────────────────────────────
   if (isLoading) return <ChartSkeleton />;
 
   if (isError) {
@@ -166,82 +122,25 @@ export default function PerformanceChart({
     );
   }
 
+  const filtered = filterByRange(data, range);
   const firstValue = filtered[0]?.value ?? 0;
   const lastValue = filtered.at(-1)?.value ?? 0;
   const change = lastValue - firstValue;
   const changePct = firstValue === 0 ? 0 : (change / firstValue) * 100;
   const isPositive = change >= 0;
 
-  // Use a fixed render width for SSR — the SVG has viewBox so it scales.
-  const svgWidth = 800;
-  const { points, minVal, maxVal } = computePoints(svgWidth);
+  const lineColor = isPositive ? "rgb(48,209,88)" : "rgb(255,69,58)";
+  const gradientColor = isPositive
+    ? "rgba(48,209,88,0.25)"
+    : "rgba(255,69,58,0.25)";
 
-  const linePath = buildSmoothPath(points);
-  const innerH = SVG_HEIGHT - PADDING.top - PADDING.bottom;
-
-  // Area path closes below the line
-  const areaPath =
-    points.length > 0
-      ? `${linePath} L ${(points.at(-1) ?? points[0]).x} ${PADDING.top + innerH} L ${points[0].x} ${PADDING.top + innerH} Z`
-      : "";
-
-  // Y-axis ticks
-  const yTicks = [0, 0.25, 0.5, 0.75, 1].map((t) => ({
-    value: minVal + t * (maxVal - minVal),
-    y: PADDING.top + innerH - t * innerH,
+  const chartData = filtered.map((d) => ({
+    ...d,
+    label: formatDateShort(d.date),
   }));
-
-  // X-axis labels — show ~5 evenly spaced dates
-  const xLabelCount = Math.min(5, filtered.length);
-  const xLabels =
-    filtered.length > 0
-      ? Array.from({ length: xLabelCount }, (_, i) => {
-          const idx = Math.round(
-            (i / (xLabelCount - 1 || 1)) * (filtered.length - 1),
-          );
-          return {
-            label: formatDateShort(filtered[idx].date),
-            x:
-              PADDING.left +
-              (idx / (filtered.length - 1 || 1)) *
-                (svgWidth - PADDING.left - PADDING.right),
-          };
-        })
-      : [];
-
-  function handleMouseMove(e: React.MouseEvent<SVGSVGElement>) {
-    if (!svgRef.current || points.length === 0) return;
-    const rect = svgRef.current.getBoundingClientRect();
-    // Map client X → SVG coordinate space
-    const scaleX = svgWidth / rect.width;
-    const svgX = (e.clientX - rect.left) * scaleX;
-
-    // Find nearest data point
-    let nearest = 0;
-    let minDist = Infinity;
-    points.forEach((p, i) => {
-      const d = Math.abs(p.x - svgX);
-      if (d < minDist) {
-        minDist = d;
-        nearest = i;
-      }
-    });
-
-    setTooltip({
-      x: points[nearest].x,
-      y: points[nearest].y,
-      point: filtered[nearest],
-    });
-  }
-
-  const lineColor = isPositive ? "rgb(34,197,94)" : "rgb(239,68,68)";
-  const gradientStart = isPositive
-    ? "rgba(34,197,94,0.25)"
-    : "rgba(239,68,68,0.25)";
 
   return (
     <div className="stoxly-card space-y-4">
-      {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-h3">Performance</h2>
@@ -257,8 +156,6 @@ export default function PerformanceChart({
             </span>
           </div>
         </div>
-
-        {/* Range selector */}
         <div className="flex gap-1 rounded-xl border border-border bg-surface p-1">
           {RANGES.map((r) => (
             <button
@@ -276,122 +173,57 @@ export default function PerformanceChart({
         </div>
       </div>
 
-      {/* Chart */}
-      <div className="relative">
-        <svg
-          ref={svgRef}
-          viewBox={`0 0 ${svgWidth} ${SVG_HEIGHT}`}
-          className="w-full overflow-visible"
-          onMouseMove={handleMouseMove}
-          onMouseLeave={() => setTooltip(null)}
-          aria-label="Portfolio performance chart"
+      <ResponsiveContainer width="100%" height={220}>
+        <AreaChart
+          data={chartData}
+          margin={{ top: 4, right: 4, left: 8, bottom: 0 }}
         >
           <defs>
-            <linearGradient
-              id={`grad-${gradientId}`}
-              x1="0"
-              y1="0"
-              x2="0"
-              y2="1"
-            >
-              <stop offset="0%" stopColor={gradientStart} />
-              <stop offset="100%" stopColor="rgba(0,0,0,0)" />
+            <linearGradient id="perfGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor={gradientColor} stopOpacity={1} />
+              <stop offset="95%" stopColor={gradientColor} stopOpacity={0} />
             </linearGradient>
           </defs>
-
-          {/* Grid lines + Y labels */}
-          {yTicks.map((t) => (
-            <g key={t.y}>
-              <line
-                x1={PADDING.left}
-                y1={t.y}
-                x2={svgWidth - PADDING.right}
-                y2={t.y}
-                style={{ stroke: "rgb(var(--border))", strokeOpacity: 0.7 }}
-                strokeWidth={1}
-              />
-              <text
-                x={PADDING.left - 8}
-                y={t.y + 4}
-                textAnchor="end"
-                fontSize={9}
-                style={{ fill: "rgb(var(--muted))" }}
-              >
-                {formatCurrency(t.value)}
-              </text>
-            </g>
-          ))}
-
-          {/* X labels */}
-          {xLabels.map((l) => (
-            <text
-              key={l.x}
-              x={l.x}
-              y={SVG_HEIGHT - 6}
-              textAnchor="middle"
-              fontSize={9}
-              style={{ fill: "rgb(var(--muted))" }}
-            >
-              {l.label}
-            </text>
-          ))}
-
-          {/* Area fill */}
-          <path d={areaPath} fill={`url(#grad-${gradientId})`} />
-
-          {/* Line */}
-          <path
-            d={linePath}
-            fill="none"
+          <CartesianGrid
+            strokeDasharray="3 3"
+            stroke="rgba(255,255,255,0.05)"
+            vertical={false}
+          />
+          <XAxis
+            dataKey="label"
+            tick={{ fill: "rgb(134,134,139)", fontSize: 11 }}
+            tickLine={false}
+            axisLine={false}
+            interval="preserveStartEnd"
+            minTickGap={40}
+          />
+          <YAxis
+            tickFormatter={formatCurrency}
+            tick={{ fill: "rgb(134,134,139)", fontSize: 11 }}
+            tickLine={false}
+            axisLine={false}
+            width={58}
+          />
+          <Tooltip
+            content={<CustomTooltip />}
+            cursor={{ stroke: "rgba(255,255,255,0.15)", strokeWidth: 1 }}
+          />
+          <Area
+            type="monotone"
+            dataKey="value"
             stroke={lineColor}
             strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-
-          {/* Tooltip crosshair */}
-          {tooltip && (
-            <>
-              <line
-                x1={tooltip.x}
-                y1={PADDING.top}
-                x2={tooltip.x}
-                y2={PADDING.top + innerH}
-                stroke="rgba(255,255,255,0.1)"
-                strokeWidth={1}
-                strokeDasharray="4 3"
-              />
-              <circle
-                cx={tooltip.x}
-                cy={tooltip.y}
-                r={4}
-                fill={lineColor}
-                stroke="white"
-                strokeWidth={2}
-              />
-            </>
-          )}
-        </svg>
-
-        {/* Floating tooltip card */}
-        {tooltip && (
-          <div
-            className="pointer-events-none absolute z-10 rounded-xl border border-border bg-card px-3 py-2 shadow-sm"
-            style={{
-              left: `${Math.min((tooltip.x / svgWidth) * 100, 75)}%`,
-              top: `${Math.max(((tooltip.y - PADDING.top) / (SVG_HEIGHT - PADDING.top - PADDING.bottom)) * 100 - 20, 0)}%`,
-              transform: "translate(-50%, -100%)",
+            fill="url(#perfGrad)"
+            dot={false}
+            activeDot={{
+              r: 4,
+              fill: lineColor,
+              stroke: "rgba(0,0,0,0.6)",
+              strokeWidth: 2,
             }}
-          >
-            <p className="text-small text-text-secondary">
-              {formatDate(tooltip.point.date)}
-            </p>
-            <p className="text-body font-semibold text-text-primary">
-              {formatCurrency(tooltip.point.value)}
-            </p>
-          </div>
-        )}
-      </div>
+          />
+        </AreaChart>
+      </ResponsiveContainer>
     </div>
   );
 }

@@ -6,35 +6,38 @@
 
 ## Overall Status
 
-| Area                        | Status                                             |
-| --------------------------- | -------------------------------------------------- |
-| Authentication              | ✅ Complete                                        |
-| Portfolio Management        | ✅ Complete                                        |
-| Transaction Recording       | ✅ Complete                                        |
-| Holdings Tracking           | ✅ Complete                                        |
-| Portfolio Metrics           | ✅ Complete (backend + UI wired to live prices)    |
-| Dashboard UI                | ✅ Complete (stat cards show real aggregated data) |
-| Landing Page                | ✅ Complete                                        |
-| Design System               | ✅ Complete                                        |
-| Theme Mode Toggle           | ✅ Complete (dark / light via next-themes)         |
-| Market Data Module          | ✅ Complete                                        |
-| Symbol Search               | ✅ Complete (DB-first + Finnhub)                   |
-| Redis Price Caching         | ✅ Complete (60 s live, 24 h historical)           |
-| Background Price Worker     | ✅ Complete (30 s interval)                        |
-| Real-Time Updates (SignalR) | ✅ Complete (backend + frontend wired)             |
-| Live Prices in Holdings     | ✅ Complete (`LiveMarketPriceService` wired)       |
-| Live Prices in Metrics      | ✅ Complete (metrics endpoint + frontend hook)     |
-| Symbol Validation           | ✅ Complete                                        |
-| Rate Limiting               | ✅ Complete (30 req/min per IP)                    |
-| Historical Price API        | ✅ Complete (Yahoo Finance, weekend fallback)      |
-| Alpha Vantage integration   | 🗑️ Removed (replaced by Yahoo Finance)             |
-| Watchlist                   | ✅ Complete (DB, API, UI, live prices, SignalR)    |
-| Stock Detail Screen         | ✅ Complete (hero, key stats, historical chart)    |
-| Portfolio Management Page   | ✅ Complete (table, rename, delete, live metrics)  |
-| Trades Page                 | ✅ Complete (cross-portfolio, portfolio filter)    |
-| Edit Transaction UI         | ✅ Complete (fee + notes via dialog)               |
-| Dashboard — Watchlist Card  | ✅ Complete (live prices, change %, empty state)   |
-| Dashboard — Recent Txns     | ✅ Complete (last 5 across portfolios, View all)   |
+| Area                        | Status                                                      |
+| --------------------------- | ----------------------------------------------------------- |
+| Authentication              | ✅ Complete                                                 |
+| Portfolio Management        | ✅ Complete                                                 |
+| Transaction Recording       | ✅ Complete                                                 |
+| Holdings Tracking           | ✅ Complete                                                 |
+| Portfolio Metrics           | ✅ Complete (backend + UI wired to live prices)             |
+| Dashboard UI                | ✅ Complete (stat cards show real aggregated data)          |
+| Landing Page                | ✅ Complete                                                 |
+| Design System               | ✅ Complete                                                 |
+| Theme Mode Toggle           | ✅ Complete (dark / light via next-themes)                  |
+| Market Data Module          | ✅ Complete                                                 |
+| Symbol Search               | ✅ Complete (DB-first + Finnhub)                            |
+| Redis Price Caching         | ✅ Complete (60 s live, 24 h historical)                    |
+| Background Price Worker     | ✅ Complete (30 s interval)                                 |
+| Real-Time Updates (SignalR) | ✅ Complete (backend + frontend wired)                      |
+| Live Prices in Holdings     | ✅ Complete (`LiveMarketPriceService` wired)                |
+| Live Prices in Metrics      | ✅ Complete (metrics endpoint + frontend hook)              |
+| Symbol Validation           | ✅ Complete                                                 |
+| Rate Limiting               | ✅ Complete (30 req/min per IP)                             |
+| Historical Price API        | ✅ Complete (Yahoo Finance, weekend fallback)               |
+| Alpha Vantage integration   | 🗑️ Removed (replaced by Yahoo Finance)                      |
+| Watchlist                   | ✅ Complete (DB, API, UI, live prices, SignalR)             |
+| Stock Detail Screen         | ✅ Complete (hero, key stats, historical chart)             |
+| Portfolio Management Page   | ✅ Complete (table, rename, delete, live metrics)           |
+| Trades Page                 | ✅ Complete (cross-portfolio, portfolio filter, pagination) |
+| Edit Transaction UI         | ✅ Complete (fee + notes via dialog)                        |
+| Dashboard — Watchlist Card  | ✅ Complete (live prices, change %, empty state)            |
+| Dashboard — Recent Txns     | ✅ Complete (last 5 across portfolios, View all)            |
+| Settings Page               | ✅ Complete (profile, password change, account deletion)    |
+| Mobile Responsive Layout    | ✅ Complete (hamburger + slide-in drawer sidebar)           |
+| Asset Allocation Chart      | ✅ Complete (donut chart + bar legend on portfolio detail)  |
 
 ---
 
@@ -167,10 +170,8 @@ A cross-portfolio transaction history page at `/trades`. Fetches all user transa
 
 ## What’s Next
 
-| Feature           | Notes                                                              |
-| ----------------- | ------------------------------------------------------------------ |
-| Mobile layout     | Responsive sidebar collapse for small screens (hamburger + drawer) |
-| Portfolio charts  | Historical performance chart is already built; extend to dashboard |
-| Settings page     | `/settings` route referenced in sidebar but not yet built          |
-| Price alerts      | Notify users when a watched stock crosses a threshold              |
-| Dividend tracking | Track dividend payments for portfolio holdings                     |
+| Feature           | Notes                                                 |
+| ----------------- | ----------------------------------------------------- |
+| Price alerts      | Notify users when a watched stock crosses a threshold |
+| CSV export        | Export transaction history to CSV                     |
+| Dividend tracking | Track dividend payments for portfolio holdings        |
