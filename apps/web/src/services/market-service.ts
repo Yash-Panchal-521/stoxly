@@ -1,5 +1,10 @@
 import { apiGet } from "@/lib/api-client";
-import type { HistoricalPrice, SymbolSearchResult } from "@/types/market";
+import type {
+  HistoricalPrice,
+  StockChartData,
+  StockPrice,
+  SymbolSearchResult,
+} from "@/types/market";
 
 export async function searchSymbols(
   query: string,
@@ -16,4 +21,17 @@ export async function getHistoricalPrice(
   return apiGet<HistoricalPrice>(
     `/market/historical-price?symbol=${encodeURIComponent(symbol)}&date=${encodeURIComponent(date)}`,
   ).catch(() => null);
+}
+
+export async function getStockPrice(symbol: string): Promise<StockPrice> {
+  return apiGet<StockPrice>(`/market/price/${encodeURIComponent(symbol)}`);
+}
+
+export async function getStockChart(
+  symbol: string,
+  range: string,
+): Promise<StockChartData> {
+  return apiGet<StockChartData>(
+    `/market/chart/${encodeURIComponent(symbol)}?range=${encodeURIComponent(range)}`,
+  );
 }

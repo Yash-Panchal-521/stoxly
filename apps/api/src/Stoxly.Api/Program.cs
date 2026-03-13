@@ -28,6 +28,8 @@ builder.Services.AddScoped<IPortfolioService, PortfolioService>();
 builder.Services.AddScoped<ITransactionRepository, TransactionRepository>();
 builder.Services.AddScoped<ITransactionService, TransactionService>();
 builder.Services.AddScoped<ISymbolRepository, SymbolRepository>();
+builder.Services.AddScoped<IWatchlistRepository, WatchlistRepository>();
+builder.Services.AddScoped<IWatchlistService, WatchlistService>();
 builder.Services.AddSingleton<IFifoEngine, FifoEngine>();
 builder.Services.AddScoped<IHoldingsService, HoldingsService>();
 builder.Services.AddScoped<IPortfolioMetricsService, PortfolioMetricsService>();

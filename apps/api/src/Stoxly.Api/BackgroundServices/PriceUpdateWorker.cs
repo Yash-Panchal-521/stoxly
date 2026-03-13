@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Stoxly.Api.Data;
 using Stoxly.Api.Hubs;
 using Stoxly.Api.MarketData.Interfaces;
+using Stoxly.Api.Repositories;
 
 namespace Stoxly.Api.BackgroundServices;
 
@@ -62,13 +63,19 @@ public sealed class PriceUpdateWorker : BackgroundService
         var market = scope.ServiceProvider.GetRequiredService<IMarketDataService>();
 
         // 1. Collect distinct symbols from holdings (non-deleted transactions)
-        var symbols = await db.Transactions
+        var holdingSymbols = await db.Transactions
             .Where(t => t.DeletedAt == null)
             .Select(t => t.Symbol)
             .Distinct()
             .ToListAsync(ct);
 
-        // TODO: also merge watchlist symbols once the watchlists feature is implemented.
+        // Merge with watchlist symbols so watched stocks also receive live price broadcasts.
+        var watchlistRepo = scope.ServiceProvider.GetRequiredService<IWatchlistRepository>();
+        var watchlistSymbols = await watchlistRepo.GetAllDistinctTickersAsync();
+
+        var symbols = holdingSymbols
+            .Union(watchlistSymbols, StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
         if (symbols.Count == 0)
         {

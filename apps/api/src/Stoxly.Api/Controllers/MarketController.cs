@@ -93,6 +93,42 @@ public sealed class MarketController : ControllerBase
         var prices = await _marketDataService.GetPricesAsync(request.Symbols);
         return Ok(prices);
     }
+
+    /// <summary>Returns daily closing prices for a symbol over a given range (1W, 1M, 3M, 6M, 1Y).</summary>
+    [HttpGet("chart/{symbol}")]
+    public async Task<IActionResult> GetChart(string symbol, [FromQuery] string range = "1M")
+    {
+        var sym = symbol.Trim().ToUpperInvariant();
+
+        if (!SafeQueryPattern.IsMatch(sym))
+            return BadRequest(new { error = "Symbol contains invalid characters." });
+
+        var upperRange = range.Trim().ToUpperInvariant();
+        var validRanges = new HashSet<string> { "1W", "1M", "3M", "6M", "1Y" };
+        if (!validRanges.Contains(upperRange))
+            return BadRequest(new { error = "Invalid range. Valid values: 1W, 1M, 3M, 6M, 1Y." });
+
+        var to = DateOnly.FromDateTime(DateTime.UtcNow);
+        var from = upperRange switch
+        {
+            "1W" => to.AddDays(-7),
+            "1M" => to.AddMonths(-1),
+            "3M" => to.AddMonths(-3),
+            "6M" => to.AddMonths(-6),
+            "1Y" => to.AddYears(-1),
+            _ => to.AddMonths(-1),
+        };
+
+        var closes = await _marketDataService.GetDailyClosesAsync(sym, from, to);
+        var points = closes
+            .OrderBy(kv => kv.Key)
+            .Select(kv => new ChartPointDto(kv.Key.ToString("yyyy-MM-dd"), kv.Value))
+            .ToList();
+
+        return Ok(new StockChartDto(sym, upperRange, points));
+    }
 }
 
 public sealed record GetPricesRequest(IReadOnlyList<string> Symbols);
+public sealed record ChartPointDto(string Date, decimal Price);
+public sealed record StockChartDto(string Symbol, string Range, IReadOnlyList<ChartPointDto> Points);
