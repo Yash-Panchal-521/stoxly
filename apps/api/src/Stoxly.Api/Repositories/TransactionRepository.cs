@@ -30,6 +30,19 @@ public class TransactionRepository : ITransactionRepository
             .ToListAsync();
     }
 
+    public async Task<List<TransactionWithPortfolioDto>> GetAllUserTransactionsAsync(string userId)
+    {
+        var results = await (
+            from t in _db.Transactions
+            join p in _db.Portfolios on t.PortfolioId equals p.Id
+            where p.UserId == userId && t.DeletedAt == null && p.DeletedAt == null
+            orderby t.TradeDate descending, t.CreatedAt descending
+            select new { Transaction = t, PortfolioName = p.Name }
+        ).AsNoTracking().ToListAsync();
+
+        return results.Select(x => new TransactionWithPortfolioDto(x.Transaction, x.PortfolioName)).ToList();
+    }
+
     public async Task<Transaction?> GetTransactionByIdAsync(Guid id, Guid portfolioId)
     {
         return await _db.Transactions

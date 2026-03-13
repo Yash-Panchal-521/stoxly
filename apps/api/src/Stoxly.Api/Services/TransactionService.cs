@@ -62,7 +62,13 @@ public class TransactionService : ITransactionService
         await EnsurePortfolioBelongsToUserAsync(portfolioId, userId);
 
         var transactions = await _transactionRepository.GetPortfolioTransactionsAsync(portfolioId);
-        return transactions.Select(MapToResponse).ToList();
+        return transactions.Select(t => MapToResponse(t)).ToList();
+    }
+
+    public async Task<List<TransactionResponse>> GetAllUserTransactionsAsync(string userId)
+    {
+        var items = await _transactionRepository.GetAllUserTransactionsAsync(userId);
+        return items.Select(x => MapToResponse(x.Transaction, x.PortfolioName)).ToList();
     }
 
     public async Task<TransactionResponse> UpdateTransactionAsync(Guid id, Guid portfolioId, string userId, UpdateTransactionRequest request)
@@ -118,12 +124,13 @@ public class TransactionService : ITransactionService
             throw new ArgumentException("Trade date cannot be in the future.");
     }
 
-    private static TransactionResponse MapToResponse(Transaction transaction)
+    private static TransactionResponse MapToResponse(Transaction transaction, string? portfolioName = null)
     {
         return new TransactionResponse
         {
             Id = transaction.Id,
             PortfolioId = transaction.PortfolioId,
+            PortfolioName = portfolioName,
             Symbol = transaction.Symbol,
             Type = transaction.Type.ToString(),
             Quantity = transaction.Quantity,

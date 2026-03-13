@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import {
@@ -20,6 +19,7 @@ interface DeletePortfolioDialogProps {
   readonly portfolioName: string;
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
+  readonly redirectTo?: string;
 }
 
 export default function DeletePortfolioDialog({
@@ -27,6 +27,7 @@ export default function DeletePortfolioDialog({
   portfolioName,
   open,
   onOpenChange,
+  redirectTo = "/dashboard",
 }: DeletePortfolioDialogProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -38,7 +39,7 @@ export default function DeletePortfolioDialog({
       queryClient.invalidateQueries({ queryKey: ["portfolios"] });
       toast("Portfolio deleted successfully", "success");
       onOpenChange(false);
-      router.push("/dashboard");
+      router.push(redirectTo);
     },
     onError: () => {
       toast("Failed to delete portfolio", "error");
@@ -54,7 +55,7 @@ export default function DeletePortfolioDialog({
             Are you sure you want to delete{" "}
             <span className="font-semibold text-text-primary">
               {portfolioName}
-            </span>
+            </span>{" "}
             ? This action cannot be undone.
           </DialogDescription>
         </DialogHeader>

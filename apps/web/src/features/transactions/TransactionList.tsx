@@ -16,6 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import AddTransactionDialog from "./AddTransactionDialog";
+import EditTransactionDialog from "./EditTransactionDialog";
 import type { TransactionResponse } from "@/types/transaction";
 
 function formatDate(dateString: string): string {
@@ -54,6 +55,7 @@ function TransactionTableRow({
 }: TransactionRowProps) {
   const { toast } = useToast();
   const { mutate: del, isPending } = useDeleteTransaction(portfolioId);
+  const [editOpen, setEditOpen] = useState(false);
 
   function handleDelete() {
     del(transaction.id, {
@@ -65,42 +67,59 @@ function TransactionTableRow({
   const isBuy = transaction.type === "BUY";
 
   return (
-    <TableRow>
-      <TableCell className="text-text-secondary">
-        {formatDate(transaction.tradeDate)}
-      </TableCell>
-      <TableCell className="font-semibold text-text-primary">
-        {transaction.symbol}
-      </TableCell>
-      <TableCell>
-        <span
-          className={`inline-block rounded px-2 py-0.5 text-small font-semibold ${
-            isBuy ? "trend-up" : "trend-down"
-          }`}
-        >
-          {transaction.type}
-        </span>
-      </TableCell>
-      <TableCell className="text-right text-text-primary">
-        {formatQuantity(transaction.quantity)}
-      </TableCell>
-      <TableCell className="text-right text-text-primary">
-        ${formatCurrency(transaction.price)}
-      </TableCell>
-      <TableCell className="text-right font-semibold text-text-primary">
-        ${formatCurrency(transaction.total)}
-      </TableCell>
-      <TableCell className="text-right">
-        <button
-          onClick={handleDelete}
-          disabled={isPending}
-          className="text-small text-muted hover:text-danger transition-all duration-150 ease-in-out disabled:opacity-50"
-          aria-label="Delete transaction"
-        >
-          {isPending ? "..." : "Delete"}
-        </button>
-      </TableCell>
-    </TableRow>
+    <>
+      <TableRow>
+        <TableCell className="text-text-secondary">
+          {formatDate(transaction.tradeDate)}
+        </TableCell>
+        <TableCell className="font-semibold text-text-primary">
+          {transaction.symbol}
+        </TableCell>
+        <TableCell>
+          <span
+            className={`inline-block rounded px-2 py-0.5 text-small font-semibold ${
+              isBuy ? "trend-up" : "trend-down"
+            }`}
+          >
+            {transaction.type}
+          </span>
+        </TableCell>
+        <TableCell className="text-right text-text-primary">
+          {formatQuantity(transaction.quantity)}
+        </TableCell>
+        <TableCell className="text-right text-text-primary">
+          ${formatCurrency(transaction.price)}
+        </TableCell>
+        <TableCell className="text-right font-semibold text-text-primary">
+          ${formatCurrency(transaction.total)}
+        </TableCell>
+        <TableCell className="text-right">
+          <div className="flex items-center justify-end gap-3">
+            <button
+              onClick={() => setEditOpen(true)}
+              className="text-small text-muted hover:text-text-primary transition-all duration-150 ease-in-out"
+              aria-label="Edit transaction"
+            >
+              Edit
+            </button>
+            <button
+              onClick={handleDelete}
+              disabled={isPending}
+              className="text-small text-muted hover:text-danger transition-all duration-150 ease-in-out disabled:opacity-50"
+              aria-label="Delete transaction"
+            >
+              {isPending ? "..." : "Delete"}
+            </button>
+          </div>
+        </TableCell>
+      </TableRow>
+      <EditTransactionDialog
+        transaction={transaction}
+        portfolioId={portfolioId}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+      />
+    </>
   );
 }
 

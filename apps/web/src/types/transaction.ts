@@ -3,6 +3,7 @@ export type TransactionType = "BUY" | "SELL";
 export interface TransactionResponse {
   id: string;
   portfolioId: string;
+  portfolioName: string | null;
   symbol: string;
   type: TransactionType;
   quantity: number;

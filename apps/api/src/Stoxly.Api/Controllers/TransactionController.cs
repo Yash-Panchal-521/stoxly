@@ -7,6 +7,7 @@ using Stoxly.Api.Services;
 namespace Stoxly.Api.Controllers;
 
 [ApiController]
+[Route("api")]
 [FirebaseAuthorize]
 public class TransactionController : ControllerBase
 {
@@ -17,7 +18,15 @@ public class TransactionController : ControllerBase
         _transactionService = transactionService;
     }
 
-    [HttpPost("api/portfolios/{portfolioId:guid}/transactions")]
+    [HttpGet("transactions")]
+    public async Task<IActionResult> GetAllTransactions()
+    {
+        var userId = GetUserId();
+        var transactions = await _transactionService.GetAllUserTransactionsAsync(userId);
+        return Ok(transactions);
+    }
+
+    [HttpPost("portfolios/{portfolioId:guid}/transactions")]
     public async Task<IActionResult> CreateTransaction(Guid portfolioId, [FromBody] CreateTransactionRequest request)
     {
         var userId = GetUserId();
@@ -25,7 +34,7 @@ public class TransactionController : ControllerBase
         return CreatedAtAction(nameof(GetTransactions), new { portfolioId }, transaction);
     }
 
-    [HttpGet("api/portfolios/{portfolioId:guid}/transactions")]
+    [HttpGet("portfolios/{portfolioId:guid}/transactions")]
     public async Task<IActionResult> GetTransactions(Guid portfolioId)
     {
         var userId = GetUserId();
@@ -33,7 +42,7 @@ public class TransactionController : ControllerBase
         return Ok(transactions);
     }
 
-    [HttpPatch("api/transactions/{id:guid}")]
+    [HttpPatch("transactions/{id:guid}")]
     public async Task<IActionResult> UpdateTransaction(Guid id, [FromBody] UpdateTransactionRequest request)
     {
         var userId = GetUserId();
@@ -41,7 +50,7 @@ public class TransactionController : ControllerBase
         return Ok(transaction);
     }
 
-    [HttpDelete("api/transactions/{id:guid}")]
+    [HttpDelete("transactions/{id:guid}")]
     public async Task<IActionResult> DeleteTransaction(Guid id, [FromQuery] Guid portfolioId)
     {
         var userId = GetUserId();

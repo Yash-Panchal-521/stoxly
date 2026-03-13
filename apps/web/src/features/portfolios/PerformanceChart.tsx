@@ -246,7 +246,7 @@ export default function PerformanceChart({
         <div>
           <h2 className="text-h3">Performance</h2>
           <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-h2 font-semibold text-text-primary">
+            <span className="text-[16px] font-semibold leading-snug text-text-primary">
               {formatCurrency(lastValue)}
             </span>
             <span
@@ -307,15 +307,15 @@ export default function PerformanceChart({
                 y1={t.y}
                 x2={svgWidth - PADDING.right}
                 y2={t.y}
-                stroke="rgba(42,47,58,0.8)"
+                style={{ stroke: "rgb(var(--border))", strokeOpacity: 0.7 }}
                 strokeWidth={1}
               />
               <text
                 x={PADDING.left - 8}
                 y={t.y + 4}
                 textAnchor="end"
-                fontSize={11}
-                fill="rgba(107,114,128,1)"
+                fontSize={9}
+                style={{ fill: "rgb(var(--muted))" }}
               >
                 {formatCurrency(t.value)}
               </text>
@@ -329,8 +329,8 @@ export default function PerformanceChart({
               x={l.x}
               y={SVG_HEIGHT - 6}
               textAnchor="middle"
-              fontSize={11}
-              fill="rgba(107,114,128,1)"
+              fontSize={9}
+              style={{ fill: "rgb(var(--muted))" }}
             >
               {l.label}
             </text>

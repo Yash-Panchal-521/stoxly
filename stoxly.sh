@@ -115,47 +115,78 @@ wait_for_service() {
 }
 
 # ─── Redis ───────────────────────────────────────────────────────────────────
-# Starts redis-server as a background process if it is not already running on
-# port 6379.  On Windows/Git Bash redis-server.exe must be on PATH (e.g. from
-# the official Windows Redis release or Memurai).  If the binary is not found
-# the function prints a warning and sets REDIS_PID="" so the rest of the stack
-# still starts — the API will fail on first cache access with a clear error
-# rather than blocking startup.
+# Start order:
+#   1. Already running on port 6379 → skip (external / manual start).
+#   2. Native redis-server on Windows PATH (Linux/macOS/Memurai) → background.
+#   3. WSL Ubuntu fallback → open a dedicated "Stoxly - Redis (WSL)" terminal
+#      that runs redis-server inside WSL2.  WSL2 automatically forwards the
+#      port to Windows localhost so the API connects to 127.0.0.1:6379 as usual.
 
 REDIS_PID=""
+REDIS_WSL=false
 
 start_redis() {
-  # If something is already listening on 6379, treat it as managed externally.
+  # If something is already listening on 6379, treat it as running externally.
   if [[ -n "$(port_pid 6379)" ]]; then
-    echo -e "  [REDIS]  Already running on port 6379 (external). Skipping start."
+    echo -e "  [REDIS]  Already running on port 6379. Skipping start."
     return 0
   fi
 
-  if ! command -v redis-server &>/dev/null; then
-    echo -e "${YELLOW}  [REDIS]  redis-server not found on PATH.${NC}"
-    echo -e "${GRAY}           Install Redis (or Memurai on Windows) and make sure it is on PATH.${NC}"
-    echo -e "${GRAY}           Without Redis the market data cache will throw connection errors.${NC}"
-    echo ""
+  # ── Native redis-server (Linux / macOS / Memurai on Windows PATH) ──────────
+  if command -v redis-server &>/dev/null; then
+    echo -e "  [REDIS]  Starting Redis server on port 6379..."
+    redis-server --port 6379 --loglevel notice --save "" --appendonly no \
+      >"$LOG_DIR/redis.log" 2>&1 &
+    REDIS_PID=$!
+
+    local elapsed=0
+    while (( elapsed < 10 )); do
+      if [[ -n "$(port_pid 6379)" ]]; then
+        echo -e "  [REDIS]  ${GREEN}Ready${NC} on port 6379  (PID $REDIS_PID)"
+        return 0
+      fi
+      sleep 1
+      (( elapsed++ ))
+    done
+
+    echo -e "${YELLOW}  [REDIS]  Timed out waiting for Redis (port 6379). Check $LOG_DIR/redis.log${NC}"
     return 0
   fi
 
-  echo -e "  [REDIS]  Starting Redis server on port 6379..."
-  redis-server --port 6379 --loglevel notice --save "" --appendonly no \
-    >"$LOG_DIR/redis.log" 2>&1 &
-  REDIS_PID=$!
+  # ── WSL Ubuntu fallback ───────────────────────────────────────────────────
+  # redis-server is not on the Windows PATH but is available inside WSL Ubuntu.
+  # Opens a dedicated cmd window titled "Stoxly - Redis (WSL)" that keeps Redis
+  # visible and closes automatically when Redis exits (e.g. on shutdown).
+  if command -v wsl.exe &>/dev/null; then
+    echo -e "  [REDIS]  redis-server not on Windows PATH."
+    echo -e "  [REDIS]  Launching Redis inside WSL Ubuntu in a dedicated terminal..."
+    cmd.exe //c start "Stoxly - Redis (WSL)" \
+      wsl.exe -d Ubuntu -- redis-server --port 6379 --loglevel notice
+    REDIS_WSL=true
 
-  # Wait up to 10 s for Redis to bind
-  local elapsed=0
-  while (( elapsed < 10 )); do
-    if [[ -n "$(port_pid 6379)" ]]; then
-      echo -e "  [REDIS]  ${GREEN}Ready${NC} on port 6379  (PID $REDIS_PID)"
-      return 0
-    fi
-    sleep 1
-    (( elapsed++ ))
-  done
+    # Wait up to 15 s for WSL2 to bind the port (WSL cold-start takes a moment)
+    local elapsed=0
+    while (( elapsed < 15 )); do
+      if [[ -n "$(port_pid 6379)" ]]; then
+        echo -e "  [REDIS]  ${GREEN}Ready${NC} via WSL Ubuntu on port 6379"
+        return 0
+      fi
+      sleep 1
+      (( elapsed++ ))
+    done
 
-  echo -e "${YELLOW}  [REDIS]  Timed out waiting for Redis (port 6379). Check $LOG_DIR/redis.log${NC}"
+    echo -e "${YELLOW}  [REDIS]  Timed out waiting for WSL Redis (15s) — it may still be starting.${NC}"
+    echo -e "${GRAY}           Check the \"Stoxly - Redis (WSL)\" terminal window for errors.${NC}"
+    return 0
+  fi
+
+  # ── Not available ─────────────────────────────────────────────────────────
+  echo -e "${YELLOW}  [REDIS]  redis-server not found and wsl.exe not available.${NC}"
+  echo -e "${GRAY}           Options:${NC}"
+  echo -e "${GRAY}             • Install Memurai (Windows Redis): https://www.memurai.com${NC}"
+  echo -e "${GRAY}             • Enable WSL2 with Ubuntu and run: sudo apt install redis-server${NC}"
+  echo -e "${GRAY}           Without Redis the market data cache will throw connection errors.${NC}"
+  echo ""
 }
 
 # ─── Start ────────────────────────────────────────────────────────────────────
@@ -228,6 +259,7 @@ start_stack() {
     printf "API_PID=%d\n" "$API_PID"
     printf "WEB_PID=%d\n" "$WEB_PID"
     [[ -n "${REDIS_PID:-}" ]] && printf "REDIS_PID=%d\n" "$REDIS_PID"
+    [[ "${REDIS_WSL:-false}" == "true" ]] && printf "REDIS_WSL=true\n"
   } > "$PID_FILE"
 
   echo ""
@@ -268,6 +300,8 @@ stop_stack() {
     for entry in "API:${API_PID:-}" "WEB:${WEB_PID:-}" "REDIS:${REDIS_PID:-}"; do
       label="${entry%%:*}"
       pid="${entry##*:}"
+      # WSL Redis is handled separately below — skip the empty-PID REDIS entry
+      [[ "$label" == "REDIS" && "${REDIS_WSL:-false}" == "true" ]] && continue
       if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
         echo -e "${YELLOW}  [$label]  Stopping PID $pid...${NC}"
         kill_tree "$pid"
@@ -276,6 +310,17 @@ stop_stack() {
         echo -e "${GRAY}  [$label]  Process PID $pid not running (already stopped).${NC}"
       fi
     done
+
+    # Gracefully stop Redis that was launched inside WSL Ubuntu
+    if [[ "${REDIS_WSL:-false}" == "true" ]] && command -v wsl.exe &>/dev/null; then
+      echo -e "${YELLOW}  [REDIS]  Shutting down Redis in WSL Ubuntu (redis-cli shutdown)...${NC}"
+      if wsl.exe -d Ubuntu -- redis-cli -p 6379 shutdown 2>/dev/null; then
+        echo -e "  [REDIS]  ${GREEN}Stopped.${NC}"
+      else
+        echo -e "${GRAY}  [REDIS]  redis-cli returned non-zero (Redis may already be stopped).${NC}"
+      fi
+      any_stopped=true
+    fi
 
     rm -f "$PID_FILE"
     # Clean Next.js dev lock so a fresh start works immediately
@@ -338,18 +383,28 @@ force_kill_stack() {
     fi
   done
 
-  # 3. Wipe PID file
+  # 3. Kill Redis running inside WSL Ubuntu
+  if command -v wsl.exe &>/dev/null; then
+    local wsl_redis_pids
+    wsl_redis_pids=$(wsl.exe -d Ubuntu -- bash -c "pgrep -x redis-server 2>/dev/null || true" 2>/dev/null || true)
+    if [[ -n "$wsl_redis_pids" ]]; then
+      echo -e "${RED}  [REDIS]  SIGKILL → redis-server in WSL Ubuntu (PIDs: $wsl_redis_pids)${NC}"
+      wsl.exe -d Ubuntu -- bash -c "pkill -9 -x redis-server 2>/dev/null || true" 2>/dev/null || true
+    fi
+  fi
+
+  # 4. Wipe PID file
   rm -f "$PID_FILE"
   echo -e "${GRAY}  Removed PID file.${NC}"
 
-  # 4. Remove Next.js dev lock so the server can restart cleanly
+  # 5. Remove Next.js dev lock so the server can restart cleanly
   local next_lock="$WEB_DIR/.next/dev/lock"
   if [[ -f "$next_lock" ]]; then
     rm -f "$next_lock"
     echo -e "${GRAY}  Removed Next.js dev lock: $next_lock${NC}"
   fi
 
-  # 5. Optionally clear stale .next/server leftovers that can cause ISR errors
+  # 6. Optionally clear stale .next/server leftovers that can cause ISR errors
   local next_server_dir="$WEB_DIR/.next/server"
   if [[ -d "$next_server_dir" ]]; then
     rm -rf "$next_server_dir"

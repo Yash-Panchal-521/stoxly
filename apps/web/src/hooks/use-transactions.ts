@@ -4,15 +4,27 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createTransaction,
   deleteTransaction,
+  getAllTransactions,
   getPortfolioTransactions,
+  updateTransaction,
 } from "@/services/transaction-service";
-import type { CreateTransactionRequest } from "@/types/transaction";
+import type {
+  CreateTransactionRequest,
+  UpdateTransactionRequest,
+} from "@/types/transaction";
 
 export function useTransactions(portfolioId: string) {
   return useQuery({
     queryKey: ["transactions", portfolioId],
     queryFn: () => getPortfolioTransactions(portfolioId),
     enabled: !!portfolioId,
+  });
+}
+
+export function useAllTransactions() {
+  return useQuery({
+    queryKey: ["transactions", "all"],
+    queryFn: getAllTransactions,
   });
 }
 
@@ -27,6 +39,24 @@ export function useCreateTransaction(portfolioId: string) {
       });
       queryClient.invalidateQueries({
         queryKey: ["portfolios", portfolioId, "holdings"],
+      });
+    },
+  });
+}
+
+export function useUpdateTransaction(portfolioId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: UpdateTransactionRequest;
+    }) => updateTransaction(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["transactions", portfolioId],
       });
     },
   });

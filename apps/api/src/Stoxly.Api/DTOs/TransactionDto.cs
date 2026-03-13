@@ -49,6 +49,7 @@ public class TransactionResponse
 {
     public Guid Id { get; set; }
     public Guid PortfolioId { get; set; }
+    public string? PortfolioName { get; set; }
     public string Symbol { get; set; } = string.Empty;
     public string Type { get; set; } = string.Empty;
     public decimal Quantity { get; set; }

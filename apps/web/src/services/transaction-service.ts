@@ -23,6 +23,10 @@ export async function getPortfolioTransactions(
   );
 }
 
+export async function getAllTransactions(): Promise<TransactionResponse[]> {
+  return apiGet<TransactionResponse[]>(`/transactions`);
+}
+
 export async function updateTransaction(
   id: string,
   data: UpdateTransactionRequest,

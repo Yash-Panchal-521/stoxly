@@ -183,11 +183,13 @@ Response `200 OK`
 
 # Transactions API
 
-## Get Transactions
+## Get All User Transactions
 
-GET `/api/portfolios/{portfolioId}/transactions`
+GET `/api/transactions`
 
 Requires a valid Firebase ID token.
+
+Returns all transactions across **all portfolios** owned by the authenticated user, ordered by `tradeDate` descending. Each record includes `portfolioName` for display in cross-portfolio views (e.g. the Trades page and the Dashboard Recent Transactions card).
 
 Response `200 OK`
 
@@ -195,6 +197,39 @@ Response `200 OK`
 [
   {
     "id": "uuid",
+    "portfolioId": "uuid",
+    "portfolioName": "Main Portfolio",
+    "symbol": "AAPL",
+    "type": "BUY",
+    "quantity": 10,
+    "price": 150.0,
+    "fee": 0.0,
+    "total": 1500.0,
+    "tradeDate": "2026-01-15",
+    "notes": null,
+    "createdAt": "2026-03-11T10:00:00Z"
+  }
+]
+```
+
+---
+
+## Get Portfolio Transactions
+
+GET `/api/portfolios/{portfolioId}/transactions`
+
+Requires a valid Firebase ID token.
+
+Returns transactions for a single portfolio. `portfolioName` is `null` in this response.
+
+Response `200 OK`
+
+```json
+[
+  {
+    "id": "uuid",
+    "portfolioId": "uuid",
+    "portfolioName": null,
     "symbol": "AAPL",
     "type": "BUY",
     "quantity": 10,
@@ -246,17 +281,33 @@ Response `201 Created`
 
 ## Update Transaction
 
-PUT `/api/portfolios/{portfolioId}/transactions/{transactionId}`
+PATCH `/api/transactions/{id}`
 
-Request body: same shape as create.
+Requires a valid Firebase ID token.
 
-Response `200 OK`
+Partial update — only `fee` and `notes` are editable after a transaction is created. `portfolioId` is required in the body for ownership verification.
+
+Request
+
+```json
+{
+  "portfolioId": "uuid",
+  "fee": 4.99,
+  "notes": "Updated note"
+}
+```
+
+Response `200 OK` — updated `TransactionResponse`.
 
 ---
 
 ## Delete Transaction
 
-DELETE `/api/portfolios/{portfolioId}/transactions/{transactionId}`
+DELETE `/api/transactions/{id}?portfolioId={portfolioId}`
+
+Requires a valid Firebase ID token.
+
+`portfolioId` is passed as a query parameter for ownership verification.
 
 Response `204 No Content`
 

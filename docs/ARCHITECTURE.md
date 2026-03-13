@@ -132,27 +132,49 @@ Folder structure under `apps/web/src/`:
 auth/           → Firebase auth guard and context provider
 components/     → shared UI components (layout, cards, shadcn wrappers)
   ui/           → includes ThemeToggle, shadcn wrappers
-  layout/       → TopNav, Sidebar
+  layout/       → TopNav, Sidebar (4 nav links: Dashboard, Portfolio, Watchlist, Trades)
   cards/        → StatCard and other card components
 features/
   market/       → StockSearch combobox component
-  portfolios/   → portfolio list and detail components
-  transactions/ → AddTransactionDialog and transaction table
+  portfolios/   → CreatePortfolioModal, DeletePortfolioDialog, RenamePortfolioDialog
+  transactions/ → AddTransactionDialog, EditTransactionDialog, TransactionList
   watchlist/    → WatchlistTable, AddToWatchlistDialog, StockDetailHero,
-                  StockKeyStats, StockPriceChart
+                   StockKeyStats, StockPriceChart
 hooks/          → TanStack Query hooks + SignalR hooks
   use-holdings.ts
-  use-portfolios.ts
+  use-portfolios.ts       → usePortfolios, useUpdatePortfolio
   use-portfolio.ts
-  use-transactions.ts
+  use-transactions.ts     → useTransactions, useAllTransactions,
+                             useCreateTransaction, useUpdateTransaction,
+                             useDeleteTransaction
   use-performance.ts
-  use-price-socket.ts   → SignalR subscription hook (live price overrides)
-  use-metrics.ts        → TanStack Query hook for /metrics endpoint
-  use-watchlist.ts      → TanStack Query hooks for watchlist CRUD
-  use-stock-detail.ts   → hooks for live stock price + chart data
+  use-price-socket.ts     → SignalR subscription hook (live price overrides)
+  use-metrics.ts          → TanStack Query hook for /metrics endpoint
+  use-watchlist.ts        → TanStack Query hooks for watchlist CRUD
+  use-stock-detail.ts     → hooks for live stock price + chart data
 lib/            → api-client, firebase init, utils, signalr.ts
-services/       → API wrappers (portfolio-service, transaction-service, market-service)
-types/          → TypeScript types (portfolio, transaction, market)
+services/       → API wrappers (portfolio-service, transaction-service,
+                   market-service, watchlist-service)
+types/          → TypeScript types (portfolio, transaction, market, watchlist)
+```
+
+App Router pages:
+
+```
+app/
+  (dashboard)/
+    dashboard/          → main dashboard (stat cards, portfolios, watchlist overview,
+                           recent transactions)
+    portfolio/          → portfolio management table (rename, delete, live metrics per row)
+    portfolio/[id]/     → portfolio detail (holdings, metrics strip, transactions)
+    watchlist/          → watchlist table with live SignalR prices
+    watchlist/[symbol]/ → stock detail screen (hero, key stats, price chart)
+    trades/             → cross-portfolio transaction history (portfolio filter)
+  login/                → sign-in page
+  register/             → sign-up page
+  forgot-password/      → password reset request
+  reset-password/       → password reset confirmation
+  page.tsx              → marketing landing page
 ```
 
 Provider chain (wraps the entire app):
@@ -195,7 +217,9 @@ Services/             → business logic
   LiveMarketPriceService (production impl — delegates to IMarketDataService)
   StubMarketPriceService (fallback / test impl — returns empty price set)
 Repositories/         → EF Core data access
-  WatchlistRepository  (CRUD + distinct ticker query for the price worker)
+  TransactionRepository  (includes GetAllUserTransactionsAsync — cross-portfolio
+                          LINQ join with portfolios for portfolioName)
+  WatchlistRepository    (CRUD + distinct ticker query for the price worker)
 Models/               → EF Core entity classes
 DTOs/                 → request/response shapes
 Data/                 → AppDbContext
