@@ -10,7 +10,8 @@ The platform allows users to:
 - Simulate buy/sell transactions
 - Monitor portfolio performance
 - Receive real-time stock price updates
-- Maintain a watchlist (planned)
+- Maintain a watchlist of stocks
+- View historical price charts per watchlisted stock
 
 Authentication is handled through Firebase Authentication. The frontend signs users in with Firebase and the backend verifies Firebase ID tokens without storing passwords.
 
@@ -53,6 +54,18 @@ GET /api/market/historical-price?symbol=AAPL&date=2026-03-10
 → On miss: YahooFinanceClient fetches daily candles, picks closest prior trading day
 → Result written to Redis
 → StockHistoricalPriceDto returned
+```
+
+Stock chart flow:
+
+```
+GET /api/market/chart/AAPL?range=3M
+→ MarketDataService.GetDailyClosesAsync(symbol, from, to)
+→ Redis check (stock:candles:{SYMBOL}:{FROM}:{TO}, 24 h TTL)
+→ On miss: YahooFinanceClient fetches daily candles for the full range
+→ Result written to Redis
+→ Ordered list of { date, price } points returned
+→ Frontend StockPriceChart renders SVG area chart
 ```
 
 Authentication flow:
@@ -125,14 +138,18 @@ features/
   market/       → StockSearch combobox component
   portfolios/   → portfolio list and detail components
   transactions/ → AddTransactionDialog and transaction table
+  watchlist/    → WatchlistTable, AddToWatchlistDialog, StockDetailHero,
+                  StockKeyStats, StockPriceChart
 hooks/          → TanStack Query hooks + SignalR hooks
   use-holdings.ts
   use-portfolios.ts
   use-portfolio.ts
   use-transactions.ts
   use-performance.ts
-  use-price-socket.ts  → SignalR subscription hook (live price overrides)
-  use-metrics.ts       → TanStack Query hook for /metrics endpoint
+  use-price-socket.ts   → SignalR subscription hook (live price overrides)
+  use-metrics.ts        → TanStack Query hook for /metrics endpoint
+  use-watchlist.ts      → TanStack Query hooks for watchlist CRUD
+  use-stock-detail.ts   → hooks for live stock price + chart data
 lib/            → api-client, firebase init, utils, signalr.ts
 services/       → API wrappers (portfolio-service, transaction-service, market-service)
 types/          → TypeScript types (portfolio, transaction, market)
@@ -173,10 +190,12 @@ Services/             → business logic
   HoldingsService        (enriches holdings with live prices via IMarketPriceService)
   TransactionService
   PortfolioMetricsService (computes metrics with live prices via IMarketPriceService)
+  WatchlistService       (watchlist CRUD, enriches items with live prices)
   IMarketPriceService    (abstraction over real-time price lookup)
   LiveMarketPriceService (production impl — delegates to IMarketDataService)
   StubMarketPriceService (fallback / test impl — returns empty price set)
 Repositories/         → EF Core data access
+  WatchlistRepository  (CRUD + distinct ticker query for the price worker)
 Models/               → EF Core entity classes
 DTOs/                 → request/response shapes
 Data/                 → AppDbContext
@@ -287,11 +306,9 @@ Server-to-client event:
 `BackgroundService` hosted inside the API process. Ticks every 30 seconds:
 
 1. Opens a DI scope to resolve `AppDbContext` and `IMarketDataService`.
-2. Queries distinct symbols from all non-deleted transactions.
+2. Queries distinct symbols from all non-deleted transactions **and** all watchlist entries.
 3. Calls `IMarketDataService.GetPricesAsync` (Redis-first, Finnhub `/quote` fallback).
 4. Broadcasts `PriceUpdated` to per-symbol SignalR groups.
-
-Watchlist symbols will be merged into the collection once that feature is implemented.
 
 ## Frontend Integration
 
@@ -308,7 +325,7 @@ File: `apps/web/src/hooks/use-price-socket.ts` — `usePriceSocket(symbols: stri
 - Returns `Record<string, PriceUpdateDto>` — a live price-override map
 - Symbols array is sorted before diffing to avoid unnecessary reconnections
 
-The hook is consumed by the portfolio detail page and the dashboard to overlay live prices onto the `HoldingsTable` component via the `priceOverrides` prop.
+The hook is consumed by the portfolio detail page, the watchlist page, and the stock detail page to overlay live prices via the `priceOverrides` prop.
 
 ---
 
@@ -324,8 +341,7 @@ Actual implemented tables:
 | `portfolios`   | User portfolios (soft-delete, one default per user)   |
 | `transactions` | Buy/sell records (soft-delete, FIFO recalculation)    |
 | `symbols`      | Discovered stock tickers (lazy-populated from search) |
-
-Planned tables: `watchlists`, `price_history`.
+| `watchlists`   | Per-user watchlist entries (symbol + metadata)        |
 
 All schema changes use EF Core migrations under `Migrations/`.
 

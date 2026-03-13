@@ -373,6 +373,110 @@ Response `200 OK`
 
 ---
 
+## Get Stock Chart
+
+GET `/api/market/chart/{symbol}?range={range}`
+
+No authentication required (public endpoint).
+
+Returns daily closing prices for the requested symbol over a date range. Data is sourced from `GetDailyClosesAsync` (Redis-first, Yahoo Finance fallback, 24 h TTL).
+
+Path parameters:
+
+| Parameter | Description               |
+| --------- | ------------------------- |
+| `symbol`  | Stock ticker, e.g. `AAPL` |
+
+Query parameters:
+
+| Parameter | Required | Values                   | Default |
+| --------- | -------- | ------------------------ | ------- |
+| `range`   | no       | `1W` `1M` `3M` `6M` `1Y` | `1M`    |
+
+Example:
+
+```
+GET /api/market/chart/AAPL?range=3M
+```
+
+Response `200 OK`
+
+```json
+{
+  "symbol": "AAPL",
+  "range": "3M",
+  "points": [
+    { "date": "2025-12-13", "price": 247.96 },
+    { "date": "2025-12-16", "price": 251.04 },
+    ...
+  ]
+}
+```
+
+Points are ordered by date ascending. Weekends and market holidays are absent from the array.
+
+Returns `400 Bad Request` if `symbol` contains invalid characters or `range` is not a supported value.
+
+---
+
+# Watchlist API
+
+All endpoints require a valid Firebase ID token.
+
+## Get Watchlist
+
+GET `/api/watchlist`
+
+Returns all watchlist entries for the authenticated user, enriched with live price data.
+
+Response `200 OK`
+
+```json
+[
+  {
+    "symbol": "TSLA",
+    "companyName": "Tesla Inc.",
+    "exchange": "NASDAQ",
+    "currentPrice": 182.5,
+    "change": -3.1,
+    "changePercent": -1.67
+  }
+]
+```
+
+---
+
+## Add to Watchlist
+
+POST `/api/watchlist`
+
+Request
+
+```json
+{
+  "symbol": "TSLA"
+}
+```
+
+Validation:
+
+- `symbol` — required, must exist in the `symbols` table
+- Duplicate entries per user are rejected with `409 Conflict`
+
+Response `200 OK` — the created watchlist item (same shape as GET).
+
+---
+
+## Remove from Watchlist
+
+DELETE `/api/watchlist/{symbol}`
+
+Response `204 No Content`
+
+Returns `404 Not Found` if the symbol is not on the user's watchlist.
+
+---
+
 # Real-Time Events (SignalR)
 
 SignalR hub endpoint:

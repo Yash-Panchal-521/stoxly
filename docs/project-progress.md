@@ -1,6 +1,6 @@
 # Stoxly — Project Progress
 
-> Last updated: March 12, 2026
+> Last updated: March 13, 2026
 
 ---
 
@@ -28,7 +28,8 @@
 | Rate Limiting               | ✅ Complete (30 req/min per IP)                    |
 | Historical Price API        | ✅ Complete (Yahoo Finance, weekend fallback)      |
 | Alpha Vantage integration   | 🗑️ Removed (replaced by Yahoo Finance)             |
-| Watchlist                   | ❌ Not started                                     |
+| Watchlist                   | ✅ Complete (DB, API, UI, live prices, SignalR)    |
+| Stock Detail Screen         | ✅ Complete (hero, key stats, historical chart)    |
 
 ---
 
@@ -114,17 +115,34 @@ The `GET /api/market/search` endpoint is protected by a fixed-window rate limite
 
 ### Background Price Worker & SignalR Hub
 
-`PriceUpdateWorker` runs every 30 seconds: collects distinct symbols from all non-deleted transactions, calls `IMarketDataService.GetPricesAsync`, and broadcasts `PriceUpdated` events via SignalR `PriceHub` to subscribed clients. The frontend now subscriibe to these events through `usePriceSocket`.
+`PriceUpdateWorker` runs every 30 seconds: collects distinct symbols from all non-deleted transactions **and all watchlist entries**, calls `IMarketDataService.GetPricesAsync`, and broadcasts `PriceUpdated` events via SignalR `PriceHub` to subscribed clients. The frontend subscribes to these events through `usePriceSocket`.
+
+### Watchlist
+
+Users can add and remove stocks from a personal watchlist without holding them.
+
+- **Backend** — `Watchlist` EF Core model, `WatchlistRepository` (CRUD + distinct ticker query), `WatchlistService` (enrich with live prices via `IMarketDataService`), `WatchlistController` (`GET /api/watchlist`, `POST /api/watchlist`, `DELETE /api/watchlist/{symbol}`). EF Core migration applied.
+- **Price worker** — `PriceUpdateWorker` now queries watchlist symbols in addition to transaction symbols so live ticks fire for watched stocks even when they are not held.
+- **Frontend** — `WatchlistTable` (live price overrides + flash animation, clickable rows), `AddToWatchlistDialog`, `use-watchlist.ts` hooks (`useWatchlist`, `useAddToWatchlist`, `useRemoveFromWatchlist`), watchlist page at `/watchlist`.
+
+### Stock Detail Screen
+
+A full-detail screen is available at `/watchlist/{symbol}` for any watchlisted stock.
+
+- **Backend** — `GET /api/market/chart/{symbol}?range=` endpoint added to `MarketController`. Wraps the existing `GetDailyClosesAsync` (Redis-cached 24 h) and returns `{ symbol, range, points: [{date, price}] }`.
+- **Frontend** — `StockDetailHero` (live price with SignalR flash, add/remove watchlist button), `StockKeyStats` (Open / Day High / Day Low / Prev. Close grid), `StockPriceChart` (custom SVG area chart, 1W/1M/3M/6M/1Y range tabs, crosshair tooltip), `use-stock-detail.ts` (`useStockPrice`, `useStockChart` TanStack Query hooks), detail page at `app/(dashboard)/watchlist/[symbol]/page.tsx`.
+- No third-party chart library introduced — the SVG chart reuses the same cardinal-spline technique as `PerformanceChart`.
 
 ---
 
 ## What’s Next
 
-| Feature          | Notes                                                         |
-| ---------------- | ------------------------------------------------------------- |
-| Watchlist        | DB model, API, UI; worker will auto-include watchlist symbols |
-| Portfolio charts | Historical performance chart using existing price data        |
-| Mobile layout    | Responsive sidebar collapse for small screens                 |
+| Feature           | Notes                                                              |
+| ----------------- | ------------------------------------------------------------------ |
+| Mobile layout     | Responsive sidebar collapse for small screens                      |
+| Portfolio charts  | Historical performance chart is already built; extend to dashboard |
+| Price alerts      | Notify users when a watched stock crosses a threshold              |
+| Dividend tracking | Track dividend payments for portfolio holdings                     |
 
 ---
 

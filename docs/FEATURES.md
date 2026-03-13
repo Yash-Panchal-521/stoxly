@@ -109,16 +109,33 @@ The API provides closing prices for any symbol on any past trading date.
 
 ## Watchlist
 
-**Status: Not yet implemented.**
+Users can track stocks they are interested in without holding them.
 
-Users will be able to track stocks without owning them.
+Capabilities:
 
-Planned capabilities:
+- add any valid stock symbol to the watchlist
+- remove stocks from the watchlist
+- view all watched stocks with live prices, day change, and change %
+- click any row to open the stock detail screen
 
-- add stocks to watchlist
-- remove stocks
-- view watchlist prices
-- monitor price movements
+Live prices are delivered via SignalR. Every row in the watchlist table flashes green or red when a real-time price tick arrives. The `PriceUpdateWorker` includes all watchlisted symbols when fetching prices.
+
+---
+
+## Stock Detail Screen
+
+A dedicated detail screen is available for each watchlisted stock at `/watchlist/{symbol}`.
+
+Information shown:
+
+- Live price with flash animation (SignalR)
+- Day change and change % with colour coding
+- Company name and ticker badge
+- Key statistics: Open, Day High, Day Low, Previous Close
+- Interactive historical price chart with 1W / 1M / 3M / 6M / 1Y range selector
+- Add / Remove Watchlist button
+
+The price chart is rendered as a custom SVG area chart with a smooth cardinal-spline line, gradient fill, y-axis grid, x-axis date labels, and a crosshair tooltip. Data is served by `GET /api/market/chart/{symbol}?range=`, cached in Redis for 24 hours.
 
 ---
 
@@ -186,7 +203,13 @@ Examples:
 
 ## Historical Price Charts
 
-Users can view historical stock price data using interactive charts.
+Interactive price charts are available on the Stock Detail screen.
+
+- Powered by a custom SVG chart (no third-party chart library required).
+- Range selector: 1W, 1M, 3M, 6M, 1Y.
+- Hover tooltip shows exact date and closing price.
+- Data fetched from `GET /api/market/chart/{symbol}?range=`, cached in Redis for 24 hours.
+- Weekend and holiday dates are automatically absent from the series.
 
 ---
 
